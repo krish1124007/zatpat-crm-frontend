@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html, body, #root {
+  height: 100%;
+}
+
+/* Print styles: hide non-essential chrome on print. */
+@media print {
+  aside, header, .no-print {
+    display: none !important;
+  }
+  main {
+    overflow: visible !important;
+  }
+}
