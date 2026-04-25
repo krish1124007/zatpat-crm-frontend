@@ -8,8 +8,14 @@ export const api = axios.create({
 
 // Helper to manage tokens
 export const tokenStorage = {
-  getAccess: () => localStorage.getItem('zpl_access'),
-  getRefresh: () => localStorage.getItem('zpl_refresh'),
+  getAccess: () => {
+    const t = localStorage.getItem('zpl_access');
+    return (t && t !== 'undefined' && t !== 'null') ? t : null;
+  },
+  getRefresh: () => {
+    const t = localStorage.getItem('zpl_refresh');
+    return (t && t !== 'undefined' && t !== 'null') ? t : null;
+  },
   set: (access, refresh) => {
     if (access) localStorage.setItem('zpl_access', access);
     if (refresh) localStorage.setItem('zpl_refresh', refresh);
@@ -17,6 +23,7 @@ export const tokenStorage = {
   clear: () => {
     localStorage.removeItem('zpl_access');
     localStorage.removeItem('zpl_refresh');
+    console.log('[api] Token storage cleared.');
   }
 };
 
@@ -25,6 +32,12 @@ api.interceptors.request.use((config) => {
   const token = tokenStorage.getAccess();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
+  } else {
+    // Helpful log to see if we are making a protected request without a token
+    const isPublic = config.url.includes('/auth/login') || config.url.includes('/auth/refresh');
+    if (!isPublic) {
+      console.warn(`[api] No token for protected request: ${config.url}`);
+    }
   }
   return config;
 });

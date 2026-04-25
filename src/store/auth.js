@@ -7,7 +7,9 @@ export const useAuth = create((set) => ({
   error: null,
 
   async bootstrap() {
-    if (!tokenStorage.getAccess()) {
+    const access = tokenStorage.getAccess();
+    if (!access || access === 'undefined' || access === 'null') {
+      console.log('[auth] No valid access token found in storage.');
       set({ user: null, status: 'unauthenticated' });
       return;
     }
@@ -16,9 +18,17 @@ export const useAuth = create((set) => ({
     try {
       const { data } = await api.get('/auth/me');
       set({ user: data.user, status: 'authenticated', error: null });
-    } catch {
-      tokenStorage.clear();
-      set({ user: null, status: 'unauthenticated' });
+      console.log('[auth] Bootstrap successful:', data.user.email);
+    } catch (err) {
+      console.error('[auth] Bootstrap failed:', err.response?.data || err.message);
+      // Only clear if it's a definitive auth failure, not a network error
+      if (err.response?.status === 401) {
+        tokenStorage.clear();
+        set({ user: null, status: 'unauthenticated' });
+      } else {
+        // For other errors (like 500 or network), don't log out immediately
+        set({ status: 'unauthenticated', error: 'Server connection failed' });
+      }
     }
   },
 
