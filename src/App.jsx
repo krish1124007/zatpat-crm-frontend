@@ -18,6 +18,8 @@ import FollowUps from './pages/FollowUps.jsx';
 import Settings from './pages/Settings.jsx';
 import ReferencePartners from './pages/ReferencePartners.jsx';
 import PartPayments from './pages/PartPayments.jsx';
+import DisbursementTrackers from './pages/DisbursementTrackers.jsx';
+
 
 export default function App() {
   const bootstrap = useAuth((s) => s.bootstrap);
@@ -50,6 +52,8 @@ export default function App() {
         <Route path="/settings" element={<Settings />} />
         <Route path="/reference-partners" element={<ReferencePartners />} />
         <Route path="/part-payments" element={<PartPayments />} />
+        <Route path="/disbursement-trackers" element={<DisbursementTrackers />} />
+
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
