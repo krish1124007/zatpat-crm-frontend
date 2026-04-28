@@ -42,6 +42,7 @@ export default function AddCaseModal({ open, onClose, onCreated, defaultChannelN
           mobileNumber: editData.bankerDetails?.mobileNumber || '',
           emailId: editData.bankerDetails?.emailId || '',
           handoverConfirmation: editData.bankerDetails?.handoverConfirmation || '',
+          bankerConfirmation: editData.bankerDetails?.bankerConfirmation || '',
         },
         handledBy: editData.handledBy?._id || editData.handledBy || '',
         saleDeedAmount: editData.saleDeedAmount ? (editData.saleDeedAmount / 100).toString() : '',
@@ -89,6 +90,7 @@ export default function AddCaseModal({ open, onClose, onCreated, defaultChannelN
         mobileNumber: '',
         emailId: '',
         handoverConfirmation: '',
+        bankerConfirmation: '',
       },
       handledBy: '',
       saleDeedAmount: '',
@@ -104,10 +106,21 @@ export default function AddCaseModal({ open, onClose, onCreated, defaultChannelN
   const [error, setError] = useState(null);
   const [channelOptions, setChannelOptions] = useState(CHANNEL_NAMES);
   const [bankOptions, setBankOptions] = useState([]);
+  const [productOptions, setProductOptions] = useState(PRODUCTS);
+  const [propertyTypeOptions, setPropertyTypeOptions] = useState(PROPERTY_TYPES);
+  const [statusOptions, setStatusOptions] = useState(LOAN_STATUSES);
+
   const [showAddChannel, setShowAddChannel] = useState(false);
   const [showAddBank, setShowAddBank] = useState(false);
+  const [showAddProduct, setShowAddProduct] = useState(false);
+  const [showAddPropertyType, setShowAddPropertyType] = useState(false);
+  const [showAddStatus, setShowAddStatus] = useState(false);
+
   const [newChannelName, setNewChannelName] = useState('');
   const [newBankName, setNewBankName] = useState('');
+  const [newProductName, setNewProductName] = useState('');
+  const [newPropertyTypeName, setNewPropertyTypeName] = useState('');
+  const [newStatusName, setNewStatusName] = useState('');
   const [dropdownLoading, setDropdownLoading] = useState(true);
 
   useEffect(() => {
@@ -121,13 +134,19 @@ export default function AddCaseModal({ open, onClose, onCreated, defaultChannelN
     try {
       setDropdownLoading(true);
       const options = await casesService.getAllDropdownOptions();
-      setChannelOptions(options.channelName?.map(o => o.value) || CHANNEL_NAMES);
+      setChannelOptions([...new Set([...CHANNEL_NAMES, ...(options.channelName?.map(o => o.value) || [])])]);
       setBankOptions(options.bankName?.map(o => o.value) || []);
+      setProductOptions([...new Set([...PRODUCTS, ...(options.product?.map(o => o.value) || [])])]);
+      setPropertyTypeOptions([...new Set([...PROPERTY_TYPES, ...(options.propertyType?.map(o => o.value) || [])])]);
+      setStatusOptions([...new Set([...LOAN_STATUSES, ...(options.status?.map(o => o.value) || [])])]);
     } catch (err) {
       console.error('Failed to load dropdown options:', err);
       // Fallback to constants
       setChannelOptions(CHANNEL_NAMES);
       setBankOptions([]);
+      setProductOptions(PRODUCTS);
+      setPropertyTypeOptions(PROPERTY_TYPES);
+      setStatusOptions(LOAN_STATUSES);
     } finally {
       setDropdownLoading(false);
     }
@@ -206,6 +225,54 @@ export default function AddCaseModal({ open, onClose, onCreated, defaultChannelN
     }
   }
 
+  async function handleAddProduct() {
+    if (!newProductName.trim()) {
+      setError('Product name cannot be empty');
+      return;
+    }
+    try {
+      await casesService.createDropdownOption('product', newProductName, newProductName);
+      setProductOptions([...productOptions, newProductName]);
+      setForm((f) => ({ ...f, product: newProductName }));
+      setNewProductName('');
+      setShowAddProduct(false);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to add product');
+    }
+  }
+
+  async function handleAddPropertyType() {
+    if (!newPropertyTypeName.trim()) {
+      setError('Property type cannot be empty');
+      return;
+    }
+    try {
+      await casesService.createDropdownOption('propertyType', newPropertyTypeName, newPropertyTypeName);
+      setPropertyTypeOptions([...propertyTypeOptions, newPropertyTypeName]);
+      setForm((f) => ({ ...f, propertyType: newPropertyTypeName }));
+      setNewPropertyTypeName('');
+      setShowAddPropertyType(false);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to add property type');
+    }
+  }
+
+  async function handleAddStatus() {
+    if (!newStatusName.trim()) {
+      setError('Status cannot be empty');
+      return;
+    }
+    try {
+      await casesService.createDropdownOption('status', newStatusName, newStatusName);
+      setStatusOptions([...statusOptions, newStatusName]);
+      setForm((f) => ({ ...f, currentStatus: newStatusName }));
+      setNewStatusName('');
+      setShowAddStatus(false);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to add status');
+    }
+  }
+
   async function handleSubmit(e) {
     e.preventDefault();
     setSubmitting(true);
@@ -281,9 +348,42 @@ export default function AddCaseModal({ open, onClose, onCreated, defaultChannelN
         {/* Loan Details */}
         <SectionTitle>Loan Details</SectionTitle>
         <div className="grid grid-cols-3 gap-3 mb-4">
-          <Select label="Product" options={PRODUCTS} {...field('product')} />
+          <SelectWithAdd
+            label="Product"
+            options={productOptions}
+            value={form.product}
+            onChange={(e) => setForm((f) => ({ ...f, product: e.target.value }))}
+            onAddClick={() => setShowAddProduct(true)}
+          />
+          {showAddProduct && (
+            <AddOptionForm
+              label="Product"
+              value={newProductName}
+              onChange={setNewProductName}
+              onAdd={handleAddProduct}
+              onCancel={() => { setShowAddProduct(false); setNewProductName(''); }}
+            />
+          )}
+
           <Input label="Loan Amount (₹)" type="number" min="0" {...field('loanAmount')} />
-          <Select label="Property Type" options={PROPERTY_TYPES} {...field('propertyType')} hasEmpty />
+          
+          <SelectWithAdd
+            label="Property Type"
+            options={propertyTypeOptions}
+            value={form.propertyType}
+            onChange={(e) => setForm((f) => ({ ...f, propertyType: e.target.value }))}
+            onAddClick={() => setShowAddPropertyType(true)}
+          />
+          {showAddPropertyType && (
+            <AddOptionForm
+              label="Property Type"
+              value={newPropertyTypeName}
+              onChange={setNewPropertyTypeName}
+              onAdd={handleAddPropertyType}
+              onCancel={() => { setShowAddPropertyType(false); setNewPropertyTypeName(''); }}
+            />
+          )}
+
           <SelectWithAdd
             label="Bank Name"
             options={bankOptions}
@@ -317,7 +417,23 @@ export default function AddCaseModal({ open, onClose, onCreated, defaultChannelN
               onCancel={() => { setShowAddChannel(false); setNewChannelName(''); }}
             />
           )}
-          <Select label="Status" options={LOAN_STATUSES} {...field('currentStatus')} />
+
+          <SelectWithAdd
+            label="Status"
+            options={statusOptions}
+            value={form.currentStatus}
+            onChange={(e) => setForm((f) => ({ ...f, currentStatus: e.target.value }))}
+            onAddClick={() => setShowAddStatus(true)}
+          />
+          {showAddStatus && (
+            <AddOptionForm
+              label="Status"
+              value={newStatusName}
+              onChange={setNewStatusName}
+              onAdd={handleAddStatus}
+              onCancel={() => { setShowAddStatus(false); setNewStatusName(''); }}
+            />
+          )}
         </div>
 
         {/* Bank Login */}
@@ -360,6 +476,12 @@ export default function AddCaseModal({ open, onClose, onCreated, defaultChannelN
             label="Handover Confirmation"
             options={['Done', 'Pending']}
             {...nestedField('bankerDetails', 'handoverConfirmation')}
+            hasEmpty
+          />
+          <Select
+            label="Banker Confirmation"
+            options={['Done', 'Pending']}
+            {...nestedField('bankerDetails', 'bankerConfirmation')}
             hasEmpty
           />
         </div>

@@ -138,7 +138,7 @@ export default function CasesDataGrid({ rows, loading, onRowClick, onCellEdit, o
           const c = STATUS_COLORS[p.value];
           return c
             ? { backgroundColor: c.bg, color: c.fg, fontWeight: 600, textAlign: 'center' }
-            : null;
+            : { backgroundColor: '#f1f5f9', color: '#334155', fontWeight: 600, textAlign: 'center' };
         },
         width: 140,
       },

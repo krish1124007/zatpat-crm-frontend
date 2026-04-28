@@ -155,8 +155,15 @@ export default function CaseDrawer({ caseId, onClose, onUpdated, onDeleted, onEd
 }
 
 function StatusPill({ value }) {
+  if (!value) return null;
   const c = STATUS_COLORS[value];
-  if (!c) return null;
+  if (!c) {
+    return (
+      <span className="rounded-full px-2 py-0.5 text-[10px] font-semibold bg-slate-100 text-slate-700">
+        {value}
+      </span>
+    );
+  }
   return (
     <span
       className="rounded-full px-2 py-0.5 text-[10px] font-semibold"
@@ -302,6 +309,16 @@ function OverviewTab({ data, onUpdate, onRefresh }) {
                   'bg-amber-100 text-amber-700'
                 }`}>
                   {data.bankerDetails.handoverConfirmation}
+                </span>
+              ) : '---'}
+            </Field>
+            <Field label="Banker Confirmation">
+              {data.bankerDetails.bankerConfirmation ? (
+                <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                  data.bankerDetails.bankerConfirmation === 'Done' ? 'bg-emerald-100 text-emerald-700' :
+                  'bg-amber-100 text-amber-700'
+                }`}>
+                  {data.bankerDetails.bankerConfirmation}
                 </span>
               ) : '---'}
             </Field>
