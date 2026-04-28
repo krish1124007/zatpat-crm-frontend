@@ -208,35 +208,41 @@ function OverviewTab({ data, onUpdate, onRefresh }) {
         </Field>
       </div>
 
-      <Section title="Dates">
-        <Field label="Entry Date">{formatDate(data.entryDate)}</Field>
-        <Field label="Login Date">{formatDate(data.loginDate)}</Field>
-        <Field label="Sanction Date">{formatDate(data.sanctionDate)}</Field>
-        <Field label="Disbursement Date">{formatDate(data.disbursementDate)}</Field>
-        <Field label="Handover Date">{formatDate(data.handoverDate)}</Field>
-      </Section>
-
-      <Section title="Disbursement Tracker">
-        <Field label="Sale Deed Amount">{data.saleDeedAmount ? formatINR(data.saleDeedAmount) : '-'}</Field>
-        <Field label="OCR Amount">{data.ocrAmount ? formatINR(data.ocrAmount) : '-'}</Field>
-        <Field label="Parallel Funding">{data.parallelFundingAmount ? formatINR(data.parallelFundingAmount) : '-'}</Field>
-        <Field label="Full Disbursed">{data.isFullDisbursed ? 'Yes' : 'No'}</Field>
-        <div className="col-span-full mt-2">
-          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Part Payments</div>
-          {data.partPayments?.length > 0 ? (
-            <div className="space-y-1">
-              {data.partPayments.map((pp, i) => (
-                <div key={i} className="text-sm bg-slate-50 border border-slate-100 rounded px-2 py-1 inline-flex mr-2">
-                  <span className="font-semibold">{formatINR(pp.amount)}</span>
-                  <span className="text-slate-400 ml-2">on {formatDate(pp.date)}</span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-sm text-slate-400 italic">No part payments</div>
-          )}
+      <div className="rounded-lg border border-slate-200 bg-white p-3">
+        <SectionTitle>Dates</SectionTitle>
+        <div className="grid grid-cols-2 gap-3 text-sm">
+          <Field label="Entry Date">{formatDate(data.entryDate)}</Field>
+          <Field label="Login Date">{formatDate(data.loginDate)}</Field>
+          <Field label="Sanction Date">{formatDate(data.sanctionDate)}</Field>
+          <Field label="Disbursement Date">{formatDate(data.disbursementDate)}</Field>
+          <Field label="Handover Date">{formatDate(data.handoverDate)}</Field>
         </div>
-      </Section>
+      </div>
+
+      <div className="rounded-lg border border-slate-200 bg-white p-3">
+        <SectionTitle>Disbursement Tracker</SectionTitle>
+        <div className="grid grid-cols-2 gap-3 text-sm">
+          <Field label="Sale Deed Amount">{data.saleDeedAmount ? formatINR(data.saleDeedAmount) : '-'}</Field>
+          <Field label="OCR Amount">{data.ocrAmount ? formatINR(data.ocrAmount) : '-'}</Field>
+          <Field label="Parallel Funding">{data.parallelFundingAmount ? formatINR(data.parallelFundingAmount) : '-'}</Field>
+          <Field label="Full Disbursed">{data.isFullDisbursed ? 'Yes' : 'No'}</Field>
+          <div className="col-span-full mt-2">
+            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Part Payments</div>
+            {data.partPayments?.length > 0 ? (
+              <div className="space-y-1">
+                {data.partPayments.map((pp, i) => (
+                  <div key={i} className="text-sm bg-slate-50 border border-slate-100 rounded px-2 py-1 inline-flex mr-2">
+                    <span className="font-semibold">{formatINR(pp.amount)}</span>
+                    <span className="text-slate-400 ml-2">on {formatDate(pp.date)}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-sm text-slate-400 italic">No part payments</div>
+            )}
+          </div>
+        </div>
+      </div>
 
       {/* Insurance (post-disbursement) */}
       <div className="rounded-lg border border-teal-200 bg-teal-50 p-3">
