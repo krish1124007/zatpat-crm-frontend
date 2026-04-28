@@ -343,6 +343,16 @@ function OverviewTab({ data, onUpdate, onRefresh }) {
                 </span>
               ) : '---'}
             </Field>
+            <Field label="Invoice Status">
+              {data.bankerDetails.invoiceStatus ? (
+                <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                  data.bankerDetails.invoiceStatus === 'Done' ? 'bg-emerald-100 text-emerald-700' :
+                  'bg-amber-100 text-amber-700'
+                }`}>
+                  {data.bankerDetails.invoiceStatus}
+                </span>
+              ) : '---'}
+            </Field>
           </div>
         </div>
       )}
@@ -555,42 +565,70 @@ function FollowUpsTab({ data, onAdded }) {
 /* ─── PAYMENTS TAB ─── */
 function PaymentsTab({ data, onAdded }) {
   const [kind, setKind] = useState('received');
-  const [amount, setAmount] = useState('');
-  const [mode, setMode] = useState('Bank');
-  const [reference, setReference] = useState('');
-  const [note, setNote] = useState('');
-  const [disbursementNumber, setDisbursementNumber] = useState('');
-  const [gstStatus, setGstStatus] = useState('');
+  
+  // Row 1
+  const [invoiceNumber, setInvoiceNumber] = useState('');
+  const [invoiceDate, setInvoiceDate] = useState('');
+  const [disbursedAmount, setDisbursedAmount] = useState('');
+  
+  // Row 2
+  const [invoiceAmount, setInvoiceAmount] = useState('');
+  const [amountDoneStatus, setAmountDoneStatus] = useState('');
+  const [amountDoneDate, setAmountDoneDate] = useState('');
+  
+  // Row 3
   const [gstAmount, setGstAmount] = useState('');
+  const [gstStatus, setGstStatus] = useState('');
+  const [gstDate, setGstDate] = useState('');
+  
+  // Row 4
+  const [bankName, setBankName] = useState('');
+  const [reference, setReference] = useState('');
   const [shortfall, setShortfall] = useState('');
   const [shortfallReason, setShortfallReason] = useState('');
+  
   const [submitting, setSubmitting] = useState(false);
 
   async function handleAdd(e) {
     e.preventDefault();
-    const rupees = parseFloat(amount);
-    if (!rupees || rupees <= 0) return;
     setSubmitting(true);
     try {
       await casesService.addPayment(data._id, kind, {
-        amount: rupeesToPaisa(rupees),
-        mode,
-        reference,
-        note,
-        disbursementNumber,
-        gstStatus: gstStatus || undefined,
+        invoiceNumber,
+        invoiceDate: invoiceDate || undefined,
+        disbursedAmount: disbursedAmount ? rupeesToPaisa(parseFloat(disbursedAmount)) : 0,
+        
+        invoiceAmount: invoiceAmount ? rupeesToPaisa(parseFloat(invoiceAmount)) : 0,
+        amountDoneStatus: amountDoneStatus || undefined,
+        amountDoneDate: amountDoneDate || undefined,
+        
         gstAmount: gstAmount ? rupeesToPaisa(parseFloat(gstAmount)) : 0,
+        gstStatus: gstStatus || undefined,
+        gstDate: gstDate || undefined,
+        
+        bankName,
+        reference,
         shortfall: shortfall ? rupeesToPaisa(parseFloat(shortfall)) : 0,
         shortfallReason,
+        
+        // Ensure legacy amount is set to invoiceAmount if empty so things don't break
+        amount: invoiceAmount ? rupeesToPaisa(parseFloat(invoiceAmount)) : 0,
       });
-      setAmount('');
-      setReference('');
-      setNote('');
-      setDisbursementNumber('');
-      setGstStatus('');
+      
+      setInvoiceNumber('');
+      setInvoiceDate('');
+      setDisbursedAmount('');
+      setInvoiceAmount('');
+      setAmountDoneStatus('');
+      setAmountDoneDate('');
       setGstAmount('');
+      setGstStatus('');
+      setGstDate('');
+      setBankName('');
+      setReference('');
       setShortfall('');
       setShortfallReason('');
+      
       onAdded?.();
     } finally {
       setSubmitting(false);
@@ -613,42 +651,110 @@ function PaymentsTab({ data, onAdded }) {
       </div>
 
       <form onSubmit={handleAdd} className="mb-4 rounded-lg border border-slate-200 bg-slate-50 p-3">
-        <div className="mb-2 text-sm font-semibold text-slate-700">Add payment</div>
-        <div className="grid grid-cols-3 gap-2 mb-2">
+        <div className="mb-2 flex items-center justify-between text-sm font-semibold text-slate-700">
+          <span>Add payment</span>
           <select
             value={kind}
             onChange={(e) => setKind(e.target.value)}
-            className="rounded-md border border-slate-300 px-2 py-1 text-sm"
+            className="rounded-md border border-slate-300 px-2 py-1 text-xs font-normal"
           >
-            <option value="received">Received</option>
-            <option value="done">Paid Out</option>
+            <option value="received">Pending</option>
+            <option value="done">Done</option>
           </select>
+        </div>
+        
+        {/* Row 1 */}
+        <div className="grid grid-cols-3 gap-2 mb-2">
+          <input
+            type="text"
+            placeholder="Invoice Number"
+            value={invoiceNumber}
+            onChange={(e) => setInvoiceNumber(e.target.value)}
+            className="rounded-md border border-slate-300 px-2 py-1 text-sm"
+          />
+          <input
+            type="date"
+            placeholder="Invoice Date"
+            value={invoiceDate}
+            onChange={(e) => setInvoiceDate(e.target.value)}
+            className="rounded-md border border-slate-300 px-2 py-1 text-sm"
+          />
           <input
             type="number"
             min="0"
             step="0.01"
-            placeholder="Amount (Rs)"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
+            placeholder="Disbursed Amount (₹)"
+            value={disbursedAmount}
+            onChange={(e) => setDisbursedAmount(e.target.value)}
+            className="rounded-md border border-slate-300 px-2 py-1 text-sm"
+          />
+        </div>
+        
+        {/* Row 2 */}
+        <div className="grid grid-cols-3 gap-2 mb-2">
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            placeholder="Invoice Amount (₹)"
+            value={invoiceAmount}
+            onChange={(e) => setInvoiceAmount(e.target.value)}
             className="rounded-md border border-slate-300 px-2 py-1 text-sm"
           />
           <select
-            value={mode}
-            onChange={(e) => setMode(e.target.value)}
-            className="rounded-md border border-slate-300 px-2 py-1 text-sm"
+            value={amountDoneStatus}
+            onChange={(e) => setAmountDoneStatus(e.target.value)}
+            className="rounded-md border border-slate-300 px-2 py-1 text-sm text-slate-500"
           >
-            <option>Bank</option>
-            <option>Cash</option>
-            <option>UPI</option>
-            <option>Cheque</option>
+            <option value="">Amount Status...</option>
+            <option value="Done">Done</option>
+            <option value="Pending">Pending</option>
           </select>
+          <input
+            type="date"
+            placeholder="Amount Done Date"
+            value={amountDoneDate}
+            onChange={(e) => setAmountDoneDate(e.target.value)}
+            className="rounded-md border border-slate-300 px-2 py-1 text-sm"
+          />
         </div>
+
+        {/* Row 3 */}
         <div className="grid grid-cols-3 gap-2 mb-2">
           <input
+            type="number"
+            min="0"
+            step="0.01"
+            placeholder="GST Amount (₹)"
+            value={gstAmount}
+            onChange={(e) => setGstAmount(e.target.value)}
+            className="rounded-md border border-slate-300 px-2 py-1 text-sm"
+          />
+          <select
+            value={gstStatus}
+            onChange={(e) => setGstStatus(e.target.value)}
+            className="rounded-md border border-slate-300 px-2 py-1 text-sm text-slate-500"
+          >
+            <option value="">GST Status...</option>
+            <option value="Pending">Pending</option>
+            <option value="Received">Received</option>
+          </select>
+          <input
+            type="date"
+            placeholder="GST Date"
+            value={gstDate}
+            onChange={(e) => setGstDate(e.target.value)}
+            className="rounded-md border border-slate-300 px-2 py-1 text-sm"
+          />
+        </div>
+
+        {/* Row 4 */}
+        <div className="grid grid-cols-4 gap-2 mb-3">
+          <input
             type="text"
-            placeholder="Disbursement # (1st, 2nd...)"
-            value={disbursementNumber}
-            onChange={(e) => setDisbursementNumber(e.target.value)}
+            placeholder="Bank Name"
+            value={bankName}
+            onChange={(e) => setBankName(e.target.value)}
             className="rounded-md border border-slate-300 px-2 py-1 text-sm"
           />
           <input
@@ -658,62 +764,35 @@ function PaymentsTab({ data, onAdded }) {
             onChange={(e) => setReference(e.target.value)}
             className="rounded-md border border-slate-300 px-2 py-1 text-sm"
           />
-          <select
-            value={gstStatus}
-            onChange={(e) => setGstStatus(e.target.value)}
-            className="rounded-md border border-slate-300 px-2 py-1 text-sm"
-          >
-            <option value="">GST Status</option>
-            <option value="Pending">GST Pending</option>
-            <option value="Received">GST Received</option>
-          </select>
-        </div>
-        <div className="grid grid-cols-3 gap-2 mb-2">
           <input
             type="number"
             min="0"
             step="0.01"
-            placeholder="GST Amount (Rs)"
-            value={gstAmount}
-            onChange={(e) => setGstAmount(e.target.value)}
-            className="rounded-md border border-slate-300 px-2 py-1 text-sm"
-          />
-          <input
-            type="number"
-            min="0"
-            step="0.01"
-            placeholder="Shortfall (Rs)"
+            placeholder="Shortfall (₹)"
             value={shortfall}
             onChange={(e) => setShortfall(e.target.value)}
             className="rounded-md border border-slate-300 px-2 py-1 text-sm"
           />
           <input
             type="text"
-            placeholder="Shortfall reason"
+            placeholder="Shortfall Reason"
             value={shortfallReason}
             onChange={(e) => setShortfallReason(e.target.value)}
             className="rounded-md border border-slate-300 px-2 py-1 text-sm"
           />
         </div>
-        {/* Payment Note */}
-        <textarea
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          placeholder="Payment note (optional) - e.g., cheque details, split info..."
-          rows={2}
-          className="mb-2 w-full rounded-md border border-slate-300 px-2 py-1 text-sm"
-        />
+
         <button
           type="submit"
-          disabled={submitting || !amount}
-          className="rounded-md bg-brand px-3 py-1 text-xs font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
+          disabled={submitting}
+          className="rounded-md bg-brand px-4 py-1.5 text-xs font-semibold text-white hover:bg-brand-700 disabled:opacity-50"
         >
-          {submitting ? 'Saving...' : 'Add'}
+          {submitting ? 'Saving...' : 'Add Payment'}
         </button>
       </form>
 
-      <PaymentList title="Received" items={data.paymentReceived} />
-      <PaymentList title="Paid Out" items={data.paymentDone} />
+      <PaymentList title="Pending" items={data.paymentReceived} />
+      <PaymentList title="Done" items={data.paymentDone} />
     </div>
   );
 }
@@ -1058,33 +1137,45 @@ function PaymentList({ title, items }) {
             key={i}
             className="rounded-md border border-slate-200 bg-white px-3 py-2 text-sm"
           >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <span>{formatDate(p.date)} - {p.mode}</span>
-                {p.disbursementNumber && (
-                  <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700">
-                    {p.disbursementNumber}
+            <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center gap-2 font-medium text-slate-800">
+                {p.invoiceNumber ? `Inv: ${p.invoiceNumber}` : 'Payment'}
+                {p.invoiceDate && <span className="text-xs text-slate-500 font-normal">({formatDate(p.invoiceDate)})</span>}
+              </div>
+              <div className="text-right">
+                <span className="font-semibold tabular-nums block">{formatINR(p.invoiceAmount || p.amount)}</span>
+                {p.amountDoneStatus && (
+                  <span className={`text-[10px] font-bold uppercase ${p.amountDoneStatus === 'Done' ? 'text-emerald-600' : 'text-amber-600'}`}>
+                    {p.amountDoneStatus}
                   </span>
                 )}
               </div>
-              <span className="font-semibold tabular-nums">{formatINR(p.amount)}</span>
             </div>
-            {p.note && (
-              <div className="mt-1 text-xs text-slate-600 italic">Note: {p.note}</div>
-            )}
+            
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-slate-600">
+              {p.disbursedAmount > 0 && <div>Disbursed: <span className="font-medium text-slate-800">{formatINR(p.disbursedAmount)}</span></div>}
+              {p.amountDoneDate && <div>Paid On: <span className="font-medium text-slate-800">{formatDate(p.amountDoneDate)}</span></div>}
+              {p.bankName && <div>Bank: <span className="font-medium text-slate-800">{p.bankName}</span></div>}
+              {p.reference && <div>Ref: <span className="font-medium text-slate-800">{p.reference}</span></div>}
+            </div>
+
             {(p.gstStatus || p.shortfall > 0) && (
-              <div className="mt-1 flex gap-3 text-[11px]">
+              <div className="mt-2 flex gap-4 border-t border-slate-100 pt-2 text-[11px]">
                 {p.gstStatus && (
-                  <span className={p.gstStatus === 'Received' ? 'text-emerald-600' : 'text-amber-600'}>
-                    GST: {p.gstStatus} {p.gstAmount ? `(${formatINR(p.gstAmount)})` : ''}
+                  <span className={p.gstStatus === 'Received' ? 'text-emerald-700 font-medium' : 'text-amber-700 font-medium'}>
+                    GST: {p.gstStatus} {p.gstAmount ? `(${formatINR(p.gstAmount)})` : ''} {p.gstDate ? `on ${formatDate(p.gstDate)}` : ''}
                   </span>
                 )}
                 {p.shortfall > 0 && (
-                  <span className="text-red-600">
-                    Shortfall: {formatINR(p.shortfall)} {p.shortfallReason ? `- ${p.shortfallReason}` : ''}
+                  <span className="text-red-600 font-medium">
+                    Shortfall: {formatINR(p.shortfall)} {p.shortfallReason ? `(${p.shortfallReason})` : ''}
                   </span>
                 )}
               </div>
+            )}
+            
+            {p.note && (
+              <div className="mt-1 text-xs text-slate-500 italic border-t border-slate-100 pt-1">Note: {p.note}</div>
             )}
           </li>
         ))}

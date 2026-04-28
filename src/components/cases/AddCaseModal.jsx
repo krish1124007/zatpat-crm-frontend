@@ -142,11 +142,13 @@ export default function AddCaseModal({ open, onClose, onCreated, defaultChannelN
   const [newPropertyTypeName, setNewPropertyTypeName] = useState('');
   const [newStatusName, setNewStatusName] = useState('');
   const [dropdownLoading, setDropdownLoading] = useState(true);
+  const [referencePartnersList, setReferencePartnersList] = useState([]);
 
   useEffect(() => {
     if (open) {
       salaryService.employees().then((r) => setEmployees(r.items));
       loadDropdownOptions();
+      casesService.referencePartnersAutocomplete().then((r) => setReferencePartnersList(r.items || []));
     }
   }, [open]);
 
@@ -485,7 +487,32 @@ export default function AddCaseModal({ open, onClose, onCreated, defaultChannelN
         <SectionTitle>Referral Information</SectionTitle>
         <div className="grid grid-cols-3 gap-3 mb-4">
           <Input label="Referral ID" {...field('referralId')} placeholder="Referral ID" />
-          <Input label="Reference Name" {...field('referenceName')} placeholder="Who referred this case?" />
+          <div className="relative">
+            <Input 
+              label="Reference Name" 
+              value={form.referenceName} 
+              list="reference-partners-datalist"
+              onChange={(e) => {
+                const val = e.target.value;
+                setForm((f) => ({ ...f, referenceName: val }));
+                const match = referencePartnersList.find(p => p.referenceName === val);
+                if (match) {
+                  setForm((f) => ({
+                    ...f,
+                    referencePhone: match.referencePhone || f.referencePhone,
+                    referenceDetails: {
+                      ...f.referenceDetails,
+                      ...match.referenceDetails
+                    }
+                  }));
+                }
+              }} 
+              placeholder="Who referred this case?" 
+            />
+            <datalist id="reference-partners-datalist">
+              {referencePartnersList.map((p, i) => <option key={i} value={p.referenceName} />)}
+            </datalist>
+          </div>
           <Input label="Reference Phone" {...field('referencePhone')} />
           <Input label="Reference Mobile" {...nestedField('referenceDetails', 'mobileNumber')} />
           <Input label="Reference Bank Name" {...nestedField('referenceDetails', 'bankName')} />
@@ -530,6 +557,12 @@ export default function AddCaseModal({ open, onClose, onCreated, defaultChannelN
             label="Banker Confirmation"
             options={['Done', 'Pending']}
             {...nestedField('bankerDetails', 'bankerConfirmation')}
+            hasEmpty
+          />
+          <Select
+            label="Invoice Status"
+            options={['Done', 'Pending']}
+            {...nestedField('bankerDetails', 'invoiceStatus')}
             hasEmpty
           />
         </div>

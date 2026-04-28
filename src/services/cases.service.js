@@ -33,7 +33,11 @@ export const casesService = {
     return api.get('/cases/facets').then((r) => r.data);
   },
   referencePartners(params = {}) {
-    return api.get('/cases/reference-partners', { params }).then((r) => r.data);
+    return api.get('/cases/reference-partners', { params }).then((res) => res.data);
+  },
+
+  referencePartnersAutocomplete() {
+    return api.get('/cases/reference-partners-autocomplete').then((res) => res.data);
   },
   // Dropdown options
   getAllDropdownOptions() {
