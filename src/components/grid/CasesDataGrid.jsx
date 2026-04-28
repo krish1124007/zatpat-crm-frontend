@@ -219,6 +219,8 @@ export default function CasesDataGrid({ rows, loading, onRowClick, onCellEdit, o
         },
         width: 125,
       },
+      selectCol('sendFeedbackForm', 'Send Feedback', ['', 'Done', 'Pending'], { width: 140 }),
+      selectCol('sendReviewLink', 'Send Review', ['', 'Done', 'Pending'], { width: 130 }),
       { field: 'specialNotes', headerName: 'Special Note', editable: true, width: 200 },
       { field: 'legalAdvocateName', headerName: 'Legal Advocate', editable: true, width: 150 },
       currencyCol('valuationAmount', 'Valuation Amt', { width: 135 }),

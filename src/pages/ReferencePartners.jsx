@@ -108,13 +108,58 @@ export default function ReferencePartnersPage() {
                     <div className="text-xs text-slate-500">Amount</div>
                     <div className="text-sm font-bold tabular-nums text-slate-800">{formatINR(item.totalLoanAmount)}</div>
                   </div>
+                  <div className="text-right">
+                    <div className="text-xs text-slate-500">Total Payout</div>
+                    <div className="text-sm font-bold text-slate-800">{formatINR(item.totalPayoutAmount)}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-xs text-slate-500">Paid</div>
+                    <div className="text-sm font-bold text-emerald-700">{formatINR(item.totalPaidPayout)}</div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-xs text-slate-500">Pending</div>
+                    <div className="text-sm font-bold text-red-600">{formatINR(item.totalPayoutAmount - item.totalPaidPayout)}</div>
+                  </div>
                   <span className={`text-slate-400 transition ${expanded === idx ? 'rotate-180' : ''}`}>▼</span>
                 </div>
               </button>
 
               {expanded === idx && (
                 <div className="border-t border-slate-200 px-5 py-3">
-                  <div className="mb-2 text-xs font-semibold uppercase text-slate-500">Referred Cases</div>
+                  <div className="mb-2 flex items-center justify-between">
+                    <div className="text-xs font-semibold uppercase text-slate-500">Referred Cases</div>
+                    <button
+                      onClick={() => {
+                        const headers = ['Sr No', 'Customer Name', 'Phone', 'Bank', 'Status', 'Loan Amount', 'Disbursed Amount', 'Payout %', 'Payout Amount', 'Payout Status', 'Paid Date', 'Mode', 'Bank Name'];
+                        const rows = item.cases.map(c => [
+                          c.srNo,
+                          `"${c.customerName || ''}"`,
+                          c.phone || '',
+                          `"${c.bankName || ''}"`,
+                          c.currentStatus || '',
+                          (c.loanAmount || 0) / 100,
+                          (c.disbursedAmount || 0) / 100,
+                          c.referralPayout?.percentage || 0,
+                          (c.referralPayout?.amount || 0) / 100,
+                          c.referralPayout?.status || '',
+                          c.referralPayout?.date ? new Date(c.referralPayout.date).toISOString().split('T')[0] : '',
+                          c.referralPayout?.mode || '',
+                          `"${c.referralPayout?.bankName || ''}"`
+                        ]);
+                        const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+                        const encodedUri = encodeURI(csvContent);
+                        const link = document.createElement('a');
+                        link.setAttribute('href', encodedUri);
+                        link.setAttribute('download', `${item.referenceName.replace(/[^a-zA-Z0-9]/g, '_')}_references.csv`);
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                      }}
+                      className="rounded bg-brand px-3 py-1.5 text-[10px] font-bold text-white hover:bg-brand-700"
+                    >
+                      Download CSV
+                    </button>
+                  </div>
                   <div className="overflow-x-auto">
                     <table className="min-w-full text-xs">
                       <thead className="border-b border-slate-200 bg-slate-50 text-slate-600">
@@ -125,7 +170,9 @@ export default function ReferencePartnersPage() {
                           <th className="px-3 py-1.5 text-left">Bank</th>
                           <th className="px-3 py-1.5 text-left">Status</th>
                           <th className="px-3 py-1.5 text-right">Loan</th>
-                          <th className="px-3 py-1.5 text-right">Disbursed</th>
+                          <th className="px-3 py-1.5 text-right">Payout %</th>
+                          <th className="px-3 py-1.5 text-right">Payout Amt</th>
+                          <th className="px-3 py-1.5 text-center">Payout Status</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -146,7 +193,17 @@ export default function ReferencePartnersPage() {
                                 </span>
                               </td>
                               <td className="px-3 py-1.5 text-right tabular-nums">{formatINR(c.loanAmount)}</td>
-                              <td className="px-3 py-1.5 text-right tabular-nums font-semibold">{formatINR(c.disbursedAmount)}</td>
+                              <td className="px-3 py-1.5 text-right tabular-nums">{c.referralPayout?.percentage ? `${c.referralPayout.percentage}%` : '—'}</td>
+                              <td className="px-3 py-1.5 text-right tabular-nums font-semibold">{c.referralPayout?.amount ? formatINR(c.referralPayout.amount) : '—'}</td>
+                              <td className="px-3 py-1.5 text-center">
+                                {c.referralPayout?.status ? (
+                                  <span className={`rounded-full px-2 py-0.5 text-[9px] font-bold ${
+                                    c.referralPayout.status === 'Paid' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                                  }`}>
+                                    {c.referralPayout.status}
+                                  </span>
+                                ) : '—'}
+                              </td>
                             </tr>
                           );
                         })}

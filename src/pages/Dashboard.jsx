@@ -18,8 +18,28 @@ export default function Dashboard() {
   const [handlers, setHandlers] = useState([]);
   const [products, setProducts] = useState([]);
   const [pipeline, setPipeline] = useState(null);
+  const [distributions, setDistributions] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [selectedHandler, setSelectedHandler] = useState(null);
+  const [selectedKpi, setSelectedKpi] = useState(null);
+  const [kpiCases, setKpiCases] = useState([]);
+  const [kpiLoading, setKpiLoading] = useState(false);
+
+  async function handleKpiClick(title, params) {
+    if (!params) return;
+    setSelectedKpi({ title, params });
+    setKpiLoading(true);
+    try {
+      const { casesService } = await import('../services/cases.service.js');
+      const r = await casesService.list({ ...params, limit: 100 });
+      setKpiCases(r.items);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setKpiLoading(false);
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -34,8 +54,9 @@ export default function Dashboard() {
       dashboardService.handlerPerformance(),
       dashboardService.productBreakdown(),
       dashboardService.pipelineSummary(),
+      dashboardService.allDistributions(),
     ])
-      .then(([k, b, t, bk, rc, fi, ch, hp, pb, ps]) => {
+      .then(([k, b, t, bk, rc, fi, ch, hp, pb, ps, dist]) => {
         if (cancelled) return;
         setKpis(k);
         setBreakdown(b);
@@ -47,6 +68,7 @@ export default function Dashboard() {
         setHandlers(hp.items);
         setProducts(pb.items);
         setPipeline(ps);
+        setDistributions(dist);
       })
       .catch((e) => setError(e.response?.data?.error || 'Failed to load dashboard'))
       .finally(() => !cancelled && setLoading(false));
@@ -80,22 +102,26 @@ export default function Dashboard() {
           <>
             {/* ── ROW 1: Primary KPIs ── */}
             <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <Kpi label="Total Cases" value={kpis.totalCases} hint={`${kpis.monthNewCases} new this month`} accent="text-slate-800" />
-              <Kpi label="Active Pipeline" value={kpis.activeCases} hint="In progress" accent="text-indigo-700" spark={trendValues} />
-              <Kpi label="This Month Disbursed" value={kpis.monthDisbursed.count} hint={formatINR(kpis.monthDisbursed.amount)} accent="text-emerald-700" />
-              <Kpi label="Pending Payments" value={kpis.pendingPayment.count} hint={formatINR(kpis.pendingPayment.amount)} accent="text-amber-700" />
+              <Kpi label="Total Cases" value={kpis.totalCases} hint={`${kpis.monthNewCases} new this month`} accent="text-slate-800" onClick={() => handleKpiClick('Total Cases', {})} />
+              <Kpi label="Active Pipeline" value={kpis.activeCases} hint="In progress" accent="text-indigo-700" spark={trendValues} onClick={() => handleKpiClick('Active Pipeline', {})} />
+              <Kpi label="This Month Disbursed" value={kpis.monthDisbursed.count} hint={formatINR(kpis.monthDisbursed.amount)} accent="text-emerald-700" onClick={() => handleKpiClick('This Month Disbursed', { status: 'Disbursed' })} />
+              <Kpi label="Pending Payments" value={kpis.pendingPayment.count} hint={formatINR(kpis.pendingPayment.amount)} accent="text-amber-700" onClick={() => handleKpiClick('Pending Payments', { pendingPayment: 'true' })} />
             </div>
 
             {/* ── ROW 2: Secondary KPIs ── */}
-            <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="mb-4 grid gap-3 sm:grid-cols-3 lg:grid-cols-6">
               <Kpi label="Today's Follow-ups" value={kpis.todayFollowUps}
                 hint={followCounts ? `${followCounts.overdue} overdue | ${followCounts.upcoming} upcoming` : ''}
-                accent="text-rose-700" href="/followups" />
+                accent="text-rose-700" onClick={() => window.location.href = '#/followups'} />
               <Kpi label="Sanctioned (Awaiting Disb.)" value={kpis.sanctionedPending.count}
-                hint={formatINR(kpis.sanctionedPending.amount)} accent="text-blue-700" />
+                hint={formatINR(kpis.sanctionedPending.amount)} accent="text-blue-700" onClick={() => handleKpiClick('Sanctioned Cases', { status: 'Sanctioned' })} />
               <Kpi label="All-time Disbursed" value={kpis.totalDisbursed.count}
-                hint={formatINR(kpis.totalDisbursed.amount)} accent="text-emerald-800" />
+                hint={formatINR(kpis.totalDisbursed.amount)} accent="text-emerald-800" onClick={() => handleKpiClick('All-time Disbursed', { status: 'Disbursed' })} />
               <Kpi label="Avg Loan Size" value={formatINR(kpis.avgLoanAmount)} accent="text-purple-700" />
+              <Kpi label="Part Payments Collected" value={kpis.partPayments?.count || 0}
+                hint={formatINR(kpis.partPayments?.amount || 0)} accent="text-amber-600" onClick={() => handleKpiClick('Part Payments', { hasPartPayment: 'true' })} />
+              <Kpi label="Unpaid Ref. Payouts" value={kpis.unpaidReferralPayout?.count || 0}
+                hint={formatINR(kpis.unpaidReferralPayout?.amount || 0)} accent="text-red-600" onClick={() => window.location.href = '#/reference-partners'} />
             </div>
 
             {/* ── ROW 3: Financial Summary ── */}
@@ -171,7 +197,11 @@ export default function Dashboard() {
                 {banks.length === 0 && <div className="text-sm text-slate-500">No disbursals yet this month.</div>}
                 <div className="space-y-2">
                   {banks.map((b, i) => (
-                    <div key={b.bank} className="flex items-center justify-between text-sm">
+                    <div 
+                      key={b.bank} 
+                      className="flex cursor-pointer items-center justify-between text-sm rounded transition hover:bg-slate-50 p-1 -mx-1"
+                      onClick={() => handleKpiClick(`Bank: ${b.bank}`, { bankName: b.bank })}
+                    >
                       <span className="flex items-center gap-2">
                         <span className="flex h-5 w-5 items-center justify-center rounded-full bg-slate-100 text-[10px] font-bold text-slate-600">{i + 1}</span>
                         <span className="truncate font-medium text-slate-700">{b.bank}</span>
@@ -190,7 +220,11 @@ export default function Dashboard() {
                 {channels.length === 0 && <div className="text-sm text-slate-500">No data.</div>}
                 <div className="space-y-2">
                   {channels.map((c) => (
-                    <div key={c.channel} className="flex items-center justify-between text-sm">
+                    <div 
+                      key={c.channel} 
+                      className="flex cursor-pointer items-center justify-between text-sm rounded transition hover:bg-slate-50 p-1 -mx-1"
+                      onClick={() => handleKpiClick(`Channel: ${c.channel}`, { channelName: c.channel })}
+                    >
                       <span className="font-medium text-slate-700">{c.channel}</span>
                       <span className="flex items-center gap-3 text-xs">
                         <span className="text-slate-500">{c.count} cases</span>
@@ -207,7 +241,11 @@ export default function Dashboard() {
                 {products.length === 0 && <div className="text-sm text-slate-500">No data.</div>}
                 <div className="space-y-2">
                   {products.map((p) => (
-                    <div key={p.product} className="flex items-center justify-between text-sm">
+                    <div 
+                      key={p.product} 
+                      className="flex cursor-pointer items-center justify-between text-sm rounded transition hover:bg-slate-50 p-1 -mx-1"
+                      onClick={() => handleKpiClick(`Product: ${p.product}`, { product: p.product })}
+                    >
                       <span className="rounded bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700">{p.product}</span>
                       <span className="flex items-center gap-3 text-xs">
                         <span className="text-slate-500">{p.count} total</span>
@@ -238,7 +276,12 @@ export default function Dashboard() {
                   <tbody>
                     {handlers.map((h, i) => (
                       <tr key={i} className="border-b border-slate-100 last:border-0">
-                        <td className="py-2 font-medium text-slate-800">{h.handler.name}</td>
+                        <td 
+                          className="py-2 font-medium text-brand hover:underline cursor-pointer"
+                          onClick={() => setSelectedHandler(h)}
+                        >
+                          {h.handler.name}
+                        </td>
                         <td className="py-2 text-right tabular-nums">{h.totalCases}</td>
                         <td className="py-2 text-right tabular-nums text-indigo-600">{h.activeCases}</td>
                         <td className="py-2 text-right tabular-nums text-emerald-700 font-semibold">{h.disbursedCases}</td>
@@ -252,6 +295,21 @@ export default function Dashboard() {
                 </table>
               </div>
             </Panel>
+
+            {/* ── Additional Column Breakdowns ── */}
+            {distributions && (
+              <div className="mb-4 grid gap-4 lg:grid-cols-4">
+                <DistributionPanel title="Send Feedback Form" data={distributions.sendFeedbackForm} onRowClick={(label) => handleKpiClick(`Feedback Form: ${label || '(Blank)'}`, { sendFeedbackForm: label })} />
+                <DistributionPanel title="Send Review Link" data={distributions.sendReviewLink} onRowClick={(label) => handleKpiClick(`Review Link: ${label || '(Blank)'}`, { sendReviewLink: label })} />
+                <DistributionPanel title="Handover Confirmation" data={distributions.handoverConfirmation} onRowClick={(label) => handleKpiClick(`Handover: ${label || '(Blank)'}`, { handoverConfirmation: label })} />
+                <DistributionPanel title="Banker Confirmation" data={distributions.bankerConfirmation} onRowClick={(label) => handleKpiClick(`Banker Confirmation: ${label || '(Blank)'}`, { bankerConfirmation: label })} />
+                <DistributionPanel title="Insurance Status" data={distributions.insuranceStatus} onRowClick={(label) => handleKpiClick(`Insurance: ${label || '(Blank)'}`, { insuranceStatus: label })} />
+                <DistributionPanel title="Property Type" data={distributions.propertyType} onRowClick={(label) => handleKpiClick(`Property: ${label || '(Blank)'}`, { propertyType: label })} />
+                <DistributionPanel title="Profession" data={distributions.profession} onRowClick={(label) => handleKpiClick(`Profession: ${label || '(Blank)'}`, { profession: label })} />
+                <DistributionPanel title="Disbursement Type" data={distributions.disbursementType} onRowClick={(label) => handleKpiClick(`Disbursement Type: ${label || '(Blank)'}`, { disbursementType: label })} />
+                <DistributionPanel title="Post Disbursement Stage" data={distributions.postDisbursementStage} onRowClick={(label) => handleKpiClick(`Post Disbursement: ${label || '(Blank)'}`, { postDisbursementStage: label })} />
+              </div>
+            )}
 
             {/* ── Recent Cases ── */}
             <Panel title="Recent Cases">
@@ -282,13 +340,121 @@ export default function Dashboard() {
           </>
         )}
       </div>
+
+      {/* ── Handler Detail Modal ── */}
+      {selectedHandler && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setSelectedHandler(null)}>
+          <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="mb-4 flex items-center justify-between border-b border-slate-100 pb-3">
+              <h2 className="text-lg font-bold text-slate-800">{selectedHandler.handler.name} - Performance</h2>
+              <button onClick={() => setSelectedHandler(null)} className="text-slate-400 hover:text-slate-600">✕</button>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-4 mb-5">
+              <div className="rounded-lg bg-slate-50 p-3 text-center">
+                <div className="text-2xl font-bold text-slate-800">{selectedHandler.totalCases}</div>
+                <div className="text-xs font-medium text-slate-500 uppercase tracking-wide">Total Cases</div>
+              </div>
+              <div className="rounded-lg bg-emerald-50 p-3 text-center">
+                <div className="text-2xl font-bold text-emerald-700">{selectedHandler.disbursedCases}</div>
+                <div className="text-xs font-medium text-emerald-600 uppercase tracking-wide">Disbursed</div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-6 mb-5">
+              <div>
+                <div className="mb-2 text-sm font-semibold text-slate-700">Status Breakdown</div>
+                <div className="space-y-2">
+                  {Object.entries(selectedHandler.statusCounts || {}).sort((a,b) => b[1]-a[1]).map(([status, count]) => (
+                    <div key={status} className="flex items-center justify-between text-sm">
+                      <div className="flex items-center gap-2">
+                        <StatusPill status={status} />
+                      </div>
+                      <div className="font-semibold text-slate-700">{count}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <div className="mb-2 text-sm font-semibold text-slate-700">Product Breakdown</div>
+                <div className="space-y-2">
+                  {Object.entries(selectedHandler.productCounts || {}).sort((a,b) => b[1]-a[1]).map(([product, count]) => (
+                    <div key={product} className="flex items-center justify-between text-sm">
+                      <div className="rounded bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-700 max-w-[120px] truncate" title={product}>
+                        {product}
+                      </div>
+                      <div className="font-semibold text-slate-700">{count}</div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <Link 
+              to={`/cases?handledBy=${selectedHandler.handler._id}`}
+              className="block w-full rounded-md bg-brand py-2 text-center text-sm font-semibold text-white hover:bg-brand-700"
+            >
+              View All Cases
+            </Link>
+          </div>
+        </div>
+      )}
+
+      {/* ── KPI Detail Modal ── */}
+      {selectedKpi && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setSelectedKpi(null)}>
+          <div className="w-full max-w-2xl max-h-[80vh] flex flex-col rounded-xl bg-white shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-slate-100 p-4">
+              <h2 className="text-lg font-bold text-slate-800">{selectedKpi.title}</h2>
+              <button onClick={() => setSelectedKpi(null)} className="text-slate-400 hover:text-slate-600">✕</button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-4">
+              {kpiLoading ? (
+                 <div className="text-sm text-slate-500">Loading cases...</div>
+              ) : kpiCases.length === 0 ? (
+                 <div className="text-sm text-slate-500">No cases found.</div>
+              ) : (
+                <div className="space-y-1">
+                  {kpiCases.map((c) => (
+                    <div key={c._id} className="flex items-center justify-between border-b border-slate-100 py-2 text-sm last:border-0 hover:bg-slate-50">
+                      <span className="flex items-center gap-2">
+                        <span className="text-xs font-mono text-slate-400">#{c.srNo}</span>
+                        <span className="font-medium text-slate-800">{c.customerName}</span>
+                        <span className="text-xs text-slate-500">{c.bankName || '---'}</span>
+                        {c.handledBy && <span className="text-xs text-indigo-600">{c.handledBy.name}</span>}
+                      </span>
+                      <span className="flex items-center gap-2">
+                        <StatusPill status={c.currentStatus} />
+                        <span className="text-xs text-slate-500">{formatDate(c.createdAt)}</span>
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="p-4 border-t border-slate-100 text-right">
+               <Link 
+                 to={`/cases?${new URLSearchParams(selectedKpi.params).toString()}`} 
+                 className="rounded-md bg-brand px-4 py-2 text-sm font-semibold text-white hover:bg-brand-700"
+               >
+                 View in Full Table →
+               </Link>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-function Kpi({ label, value, hint, accent, spark, href }) {
+function Kpi({ label, value, hint, accent, spark, onClick }) {
   const inner = (
-    <div className="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200 transition hover:shadow-md">
+    <div 
+      className={`rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-200 transition hover:shadow-md ${onClick ? 'cursor-pointer' : ''}`} 
+      onClick={onClick}
+    >
       <div className="flex items-start justify-between">
         <div>
           <div className="text-xs uppercase tracking-wide text-slate-500">{label}</div>
@@ -299,7 +465,7 @@ function Kpi({ label, value, hint, accent, spark, href }) {
       </div>
     </div>
   );
-  return href ? <Link to={href}>{inner}</Link> : inner;
+  return inner;
 }
 
 function FinanceCard({ label, value, sub, color, bg }) {
@@ -318,6 +484,26 @@ function Panel({ title, children, className = '' }) {
       <div className="mb-3 text-sm font-semibold text-slate-700">{title}</div>
       {children}
     </div>
+  );
+}
+
+function DistributionPanel({ title, data, onRowClick }) {
+  if (!data || data.length === 0) return null;
+  return (
+    <Panel title={title}>
+      <div className="space-y-1">
+        {data.map((d) => (
+          <div
+            key={d.label}
+            onClick={() => onRowClick(d.label === 'Empty' ? '' : d.label)}
+            className="flex cursor-pointer items-center justify-between rounded-md border-b border-slate-100 py-1.5 px-2 text-sm transition hover:bg-slate-50 last:border-0"
+          >
+            <span className="font-medium text-slate-700 truncate mr-2" title={d.label}>{d.label === 'Empty' ? '(Blank)' : d.label}</span>
+            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600">{d.count}</span>
+          </div>
+        ))}
+      </div>
+    </Panel>
   );
 }
 

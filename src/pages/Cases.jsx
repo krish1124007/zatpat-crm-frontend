@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import CasesDataGrid from '../components/grid/CasesDataGrid.jsx';
 import CaseDrawer from '../components/cases/CaseDrawer.jsx';
 import AddCaseModal from '../components/cases/AddCaseModal.jsx';
@@ -9,10 +10,14 @@ import { exportCasesCSV } from '../utils/csv.js';
 export default function CasesPage() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+
   const [activeTab, setActiveTab] = useState('All');
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('');
-  const [pendingOnly, setPendingOnly] = useState(false);
+  const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || '');
+  const [pendingOnly, setPendingOnly] = useState(searchParams.get('pendingPayment') === 'true');
+  const [handlerFilter, setHandlerFilter] = useState(searchParams.get('handledBy') || '');
   const [selectedId, setSelectedId] = useState(null);
   const [addOpen, setAddOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(null);
@@ -27,6 +32,7 @@ export default function CasesPage() {
       if (activeTab !== 'All') params.channelName = activeTab;
       if (statusFilter) params.status = statusFilter;
       if (pendingOnly) params.pendingPayment = 'true';
+      if (handlerFilter) params.handledBy = handlerFilter;
       const r = await casesService.list(params);
       setRows(r.items);
       setTotal(r.total);
@@ -35,7 +41,7 @@ export default function CasesPage() {
     } finally {
       setLoading(false);
     }
-  }, [activeTab, statusFilter, pendingOnly]);
+  }, [activeTab, statusFilter, pendingOnly, handlerFilter]);
 
   useEffect(() => {
     fetchRows();

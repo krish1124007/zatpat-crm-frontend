@@ -290,6 +290,27 @@ function OverviewTab({ data, onUpdate, onRefresh }) {
                 <Field label="IFSC Code">{data.referenceDetails.ifscCode || '---'}</Field>
               </>
             )}
+            {data.referralPayout && (data.referralPayout.percentage > 0 || data.referralPayout.amount > 0) && (
+              <div className="col-span-2 mt-2 border-t border-blue-100 pt-2 grid grid-cols-2 gap-3">
+                <Field label="Payout %">{data.referralPayout.percentage ? `${data.referralPayout.percentage}%` : '---'}</Field>
+                <Field label="Payout Amount">{data.referralPayout.amount ? formatINR(data.referralPayout.amount) : '---'}</Field>
+                <Field label="Payout Status">
+                  {data.referralPayout.status ? (
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                      data.referralPayout.status === 'Paid' ? 'bg-emerald-100 text-emerald-700' :
+                      'bg-amber-100 text-amber-700'
+                    }`}>
+                      {data.referralPayout.status}
+                    </span>
+                  ) : '---'}
+                </Field>
+                <Field label="Paid Date">{formatDate(data.referralPayout.date)}</Field>
+                <Field label="Payout Mode">
+                  {data.referralPayout.mode}
+                  {data.referralPayout.mode === 'Bank' && data.referralPayout.bankName ? ` (${data.referralPayout.bankName})` : ''}
+                </Field>
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -319,6 +340,35 @@ function OverviewTab({ data, onUpdate, onRefresh }) {
                   'bg-amber-100 text-amber-700'
                 }`}>
                   {data.bankerDetails.bankerConfirmation}
+                </span>
+              ) : '---'}
+            </Field>
+          </div>
+        </div>
+      )}
+
+      {/* Customer Communication */}
+      {(data.sendFeedbackForm || data.sendReviewLink) && (
+        <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-3">
+          <SectionTitle>Customer Communication</SectionTitle>
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <Field label="Feedback Form">
+              {data.sendFeedbackForm ? (
+                <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                  data.sendFeedbackForm === 'Done' ? 'bg-emerald-100 text-emerald-700' :
+                  'bg-amber-100 text-amber-700'
+                }`}>
+                  {data.sendFeedbackForm}
+                </span>
+              ) : '---'}
+            </Field>
+            <Field label="Review Link">
+              {data.sendReviewLink ? (
+                <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                  data.sendReviewLink === 'Done' ? 'bg-emerald-100 text-emerald-700' :
+                  'bg-amber-100 text-amber-700'
+                }`}>
+                  {data.sendReviewLink}
                 </span>
               ) : '---'}
             </Field>

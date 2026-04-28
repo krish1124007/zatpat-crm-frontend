@@ -11,6 +11,7 @@ export const dashboardService = {
   handlerPerformance: () => api.get('/dashboard/handler-performance').then((r) => r.data),
   productBreakdown: () => api.get('/dashboard/product-breakdown').then((r) => r.data),
   pipelineSummary: () => api.get('/dashboard/pipeline-summary').then((r) => r.data),
+  allDistributions: () => api.get('/dashboard/all-distributions').then((r) => r.data),
 };
 
 export const insuranceService = {

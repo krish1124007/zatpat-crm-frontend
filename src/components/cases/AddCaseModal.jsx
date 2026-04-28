@@ -53,53 +53,73 @@ export default function AddCaseModal({ open, onClose, onCreated, defaultChannelN
           amount: p.amount ? (p.amount / 100).toString() : '',
           date: p.date ? new Date(p.date).toISOString().split('T')[0] : ''
         })),
-      };
-    }
-    return {
-      customerName: '',
-      phone: '',
-      email: '',
-      profession: 'Salaried',
-      product: 'HL',
-      loanAmount: '',
-      bankName: '',
-      channelName: defaultChannelName,
-      currentStatus: 'Query',
-      fileNumber: '',
-      bankUserId: '',
-      bankPassword: '',
-      propertyType: '',
-      provisionalBanks: '',
-      referralId: '',
-      entryDate: new Date().toISOString().split('T')[0],
-      loginDate: '',
-      sanctionDate: '',
-      disbursementDate: '',
-      handoverDate: '',
-      referenceName: '',
-      referencePhone: '',
-      referenceDetails: {
-        mobileNumber: '',
-        bankName: '',
-        bankBranch: '',
-        accountNumber: '',
-        ifscCode: '',
+      sendFeedbackForm: editData.sendFeedbackForm || '',
+      sendReviewLink: editData.sendReviewLink || '',
+      referralPayout: {
+        percentage: editData.referralPayout?.percentage ?? '',
+        amount: editData.referralPayout?.amount ? (editData.referralPayout.amount / 100).toString() : '',
+        status: editData.referralPayout?.status || '',
+        date: editData.referralPayout?.date ? new Date(editData.referralPayout.date).toISOString().split('T')[0] : '',
+        mode: editData.referralPayout?.mode || '',
+        bankName: editData.referralPayout?.bankName || '',
       },
-      bankerDetails: {
-        name: '',
-        mobileNumber: '',
-        emailId: '',
-        handoverConfirmation: '',
-        bankerConfirmation: '',
-      },
-      handledBy: '',
-      saleDeedAmount: '',
-      ocrAmount: '',
-      parallelFundingAmount: '',
-      isFullDisbursed: false,
-      partPayments: [],
     };
-  });
+  }
+  return {
+    customerName: '',
+    phone: '',
+    email: '',
+    profession: 'Salaried',
+    product: 'HL',
+    loanAmount: '',
+    bankName: '',
+    channelName: defaultChannelName,
+    currentStatus: 'Query',
+    fileNumber: '',
+    bankUserId: '',
+    bankPassword: '',
+    propertyType: '',
+    provisionalBanks: '',
+    referralId: '',
+    entryDate: new Date().toISOString().split('T')[0],
+    loginDate: '',
+    sanctionDate: '',
+    disbursementDate: '',
+    handoverDate: '',
+    referenceName: '',
+    referencePhone: '',
+    referenceDetails: {
+      mobileNumber: '',
+      bankName: '',
+      bankBranch: '',
+      accountNumber: '',
+      ifscCode: '',
+    },
+    bankerDetails: {
+      name: '',
+      mobileNumber: '',
+      emailId: '',
+      handoverConfirmation: '',
+      bankerConfirmation: '',
+    },
+    handledBy: '',
+    saleDeedAmount: '',
+    ocrAmount: '',
+    parallelFundingAmount: '',
+    isFullDisbursed: false,
+    partPayments: [],
+    sendFeedbackForm: '',
+    sendReviewLink: '',
+    referralPayout: {
+      percentage: '',
+      amount: '',
+      status: '',
+      date: '',
+      mode: '',
+      bankName: '',
+    },
+  };
+});
 
   const [employees, setEmployees] = useState([]);
   const [submitting, setSubmitting] = useState(false);
@@ -298,6 +318,14 @@ export default function AddCaseModal({ open, onClose, onCreated, defaultChannelN
           amount: rupeesToPaisa(parseFloat(p.amount)),
           date: new Date(p.date)
         })),
+        referralPayout: {
+          percentage: Number(form.referralPayout.percentage) || 0,
+          amount: Number(form.referralPayout.amount) ? rupeesToPaisa(parseFloat(form.referralPayout.amount)) : 0,
+          status: form.referralPayout.status,
+          date: form.referralPayout.date ? new Date(form.referralPayout.date) : undefined,
+          mode: form.referralPayout.mode,
+          bankName: form.referralPayout.bankName,
+        }
       };
       
       if (editData) {
@@ -464,6 +492,26 @@ export default function AddCaseModal({ open, onClose, onCreated, defaultChannelN
           <Input label="Reference Bank Branch" {...nestedField('referenceDetails', 'bankBranch')} />
           <Input label="Account Number" {...nestedField('referenceDetails', 'accountNumber')} />
           <Input label="IFSC Code" {...nestedField('referenceDetails', 'ifscCode')} />
+          
+          <div className="col-span-3 mt-2 mb-1 border-t border-slate-100 pt-3 text-xs font-bold text-slate-500 uppercase tracking-wide">Referral Payout</div>
+          <Input label="Payout %" {...nestedField('referralPayout', 'percentage')} type="number" step="0.01" 
+            onChange={(e) => {
+              const pct = parseFloat(e.target.value) || 0;
+              const loan = parseFloat(form.loanAmount) || 0;
+              const amt = loan ? (loan * (pct / 100)).toFixed(2) : '';
+              setForm(f => ({
+                ...f, 
+                referralPayout: { ...f.referralPayout, percentage: e.target.value, amount: amt }
+              }));
+            }} 
+          />
+          <Input label="Payout Amount (₹)" {...nestedField('referralPayout', 'amount')} type="number" step="0.01" />
+          <Select label="Status" options={['Paid', 'Unpaid']} {...nestedField('referralPayout', 'status')} hasEmpty />
+          <Input label="Paid Date" type="date" {...nestedField('referralPayout', 'date')} />
+          <Select label="Mode" options={['Cash', 'Bank']} {...nestedField('referralPayout', 'mode')} hasEmpty />
+          {form.referralPayout?.mode === 'Bank' && (
+            <Input label="Bank Name" {...nestedField('referralPayout', 'bankName')} />
+          )}
         </div>
 
         {/* Banker Details */}
@@ -482,6 +530,23 @@ export default function AddCaseModal({ open, onClose, onCreated, defaultChannelN
             label="Banker Confirmation"
             options={['Done', 'Pending']}
             {...nestedField('bankerDetails', 'bankerConfirmation')}
+            hasEmpty
+          />
+        </div>
+
+        {/* Customer Communication */}
+        <SectionTitle>Customer Communication</SectionTitle>
+        <div className="grid grid-cols-3 gap-3 mb-4">
+          <Select
+            label="Send Feedback Form"
+            options={['Done', 'Pending']}
+            {...field('sendFeedbackForm')}
+            hasEmpty
+          />
+          <Select
+            label="Send Review Link"
+            options={['Done', 'Pending']}
+            {...field('sendReviewLink')}
             hasEmpty
           />
         </div>
