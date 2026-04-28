@@ -22,7 +22,7 @@ const TABS = [
   { key: 'documents', label: 'Documents' },
 ];
 
-export default function CaseDrawer({ caseId, onClose, onUpdated }) {
+export default function CaseDrawer({ caseId, onClose, onUpdated, onDeleted, onEditRequest }) {
   const [tab, setTab] = useState('overview');
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -47,6 +47,18 @@ export default function CaseDrawer({ caseId, onClose, onUpdated }) {
   async function updateField(patch) {
     await casesService.update(caseId, patch);
     refresh();
+  }
+
+  async function handleDelete() {
+    if (window.confirm('Are you sure you want to delete this case? This action cannot be undone.')) {
+      try {
+        await casesService.remove(caseId);
+        onDeleted?.(caseId);
+        onClose();
+      } catch (err) {
+        alert(err.response?.data?.error || 'Failed to delete case');
+      }
+    }
   }
 
   if (!caseId) return null;
@@ -88,12 +100,26 @@ export default function CaseDrawer({ caseId, onClose, onUpdated }) {
               </div>
             )}
           </div>
-          <button
-            onClick={onClose}
-            className="rounded-md border border-slate-300 px-2 py-1 text-sm text-slate-600 hover:bg-slate-50"
-          >
-            X
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => onEditRequest?.()}
+              className="rounded-md border border-indigo-200 px-2 py-1 text-xs font-semibold text-indigo-600 hover:bg-indigo-50"
+            >
+              Edit
+            </button>
+            <button
+              onClick={handleDelete}
+              className="rounded-md border border-red-200 px-2 py-1 text-xs font-semibold text-red-600 hover:bg-red-50"
+            >
+              Delete
+            </button>
+            <button
+              onClick={onClose}
+              className="rounded-md border border-slate-300 px-2 py-1 text-sm text-slate-600 hover:bg-slate-50"
+            >
+              X
+            </button>
+          </div>
         </header>
 
         <nav className="flex gap-1 overflow-x-auto border-b border-slate-200 px-3">
@@ -180,13 +206,37 @@ function OverviewTab({ data, onUpdate, onRefresh }) {
         <Field label="Pending Payment">
           <span className="text-red-600">{formatINR(data.pendingPaymentAmount)}</span>
         </Field>
+      </div>
+
+      <Section title="Dates">
         <Field label="Entry Date">{formatDate(data.entryDate)}</Field>
-        <Field label="Follow Date">{formatDate(data.followDate)}</Field>
         <Field label="Login Date">{formatDate(data.loginDate)}</Field>
         <Field label="Sanction Date">{formatDate(data.sanctionDate)}</Field>
         <Field label="Disbursement Date">{formatDate(data.disbursementDate)}</Field>
         <Field label="Handover Date">{formatDate(data.handoverDate)}</Field>
-      </div>
+      </Section>
+
+      <Section title="Disbursement Tracker">
+        <Field label="Sale Deed Amount">{data.saleDeedAmount ? formatINR(data.saleDeedAmount) : '-'}</Field>
+        <Field label="OCR Amount">{data.ocrAmount ? formatINR(data.ocrAmount) : '-'}</Field>
+        <Field label="Parallel Funding">{data.parallelFundingAmount ? formatINR(data.parallelFundingAmount) : '-'}</Field>
+        <Field label="Full Disbursed">{data.isFullDisbursed ? 'Yes' : 'No'}</Field>
+        <div className="col-span-full mt-2">
+          <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">Part Payments</div>
+          {data.partPayments?.length > 0 ? (
+            <div className="space-y-1">
+              {data.partPayments.map((pp, i) => (
+                <div key={i} className="text-sm bg-slate-50 border border-slate-100 rounded px-2 py-1 inline-flex mr-2">
+                  <span className="font-semibold">{formatINR(pp.amount)}</span>
+                  <span className="text-slate-400 ml-2">on {formatDate(pp.date)}</span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-sm text-slate-400 italic">No part payments</div>
+          )}
+        </div>
+      </Section>
 
       {/* Insurance (post-disbursement) */}
       <div className="rounded-lg border border-teal-200 bg-teal-50 p-3">

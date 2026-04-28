@@ -15,6 +15,7 @@ export default function CasesPage() {
   const [pendingOnly, setPendingOnly] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(null);
   const [error, setError] = useState(null);
   const [total, setTotal] = useState(0);
 
@@ -147,6 +148,20 @@ export default function CasesPage() {
           quickFilter={search}
           onRowClick={(row) => setSelectedId(row._id)}
           onCellEdit={handleCellEdit}
+          onDelete={async (row) => {
+            if (window.confirm('Are you sure you want to delete this case? This action cannot be undone.')) {
+              try {
+                await casesService.remove(row._id);
+                setRows((rs) => rs.filter((r) => r._id !== row._id));
+                setTotal((t) => t - 1);
+              } catch (err) {
+                alert(err.response?.data?.error || 'Failed to delete case');
+              }
+            }
+          }}
+          onEdit={(row) => {
+            setEditOpen(row._id);
+          }}
         />
       </div>
 
@@ -178,6 +193,23 @@ export default function CasesPage() {
           onUpdated={(updated) =>
             setRows((rs) => rs.map((r) => (r._id === updated._id ? updated : r)))
           }
+          onDeleted={(deletedId) => {
+            setRows((rs) => rs.filter((r) => r._id !== deletedId));
+            setTotal((t) => t - 1);
+          }}
+          onEditRequest={() => setEditOpen(selectedId)}
+        />
+      )}
+
+      {editOpen && (
+        <AddCaseModal
+          open={!!editOpen}
+          onClose={() => setEditOpen(null)}
+          editData={rows.find(r => r._id === editOpen)}
+          onUpdated={(updated) => {
+            setRows((rs) => rs.map((r) => (r._id === updated._id ? updated : r)));
+          }}
+          defaultChannelName={activeTab !== 'All' ? activeTab : 'Zatpat'}
         />
       )}
 

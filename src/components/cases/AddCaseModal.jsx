@@ -4,44 +4,99 @@ import { CHANNEL_NAMES, PRODUCTS, PROFESSIONS, LOAN_STATUSES, PROPERTY_TYPES } f
 import { rupeesToPaisa } from '../../utils/format.js';
 import { salaryService } from '../../services/finance.service.js';
 
-export default function AddCaseModal({ open, onClose, onCreated, defaultChannelName = 'Zatpat' }) {
-  const [form, setForm] = useState({
-    customerName: '',
-    phone: '',
-    email: '',
-    profession: 'Salaried',
-    product: 'HL',
-    loanAmount: '',
-    bankName: '',
-    channelName: defaultChannelName,
-    currentStatus: 'Query',
-    fileNumber: '',
-    bankUserId: '',
-    bankPassword: '',
-    propertyType: '',
-    provisionalBanks: '',
-    referralId: '',
-    entryDate: new Date().toISOString().split('T')[0],
-    loginDate: '',
-    sanctionDate: '',
-    disbursementDate: '',
-    handoverDate: '',
-    referenceName: '',
-    referencePhone: '',
-    referenceDetails: {
-      mobileNumber: '',
+export default function AddCaseModal({ open, onClose, onCreated, defaultChannelName = 'Zatpat', editData = null, onUpdated }) {
+  const [form, setForm] = useState(() => {
+    if (editData) {
+      return {
+        customerName: editData.customerName || '',
+        phone: editData.phone || '',
+        email: editData.email || '',
+        profession: editData.profession || 'Salaried',
+        product: editData.product || 'HL',
+        loanAmount: editData.loanAmount ? (editData.loanAmount / 100).toString() : '',
+        bankName: editData.bankName || '',
+        channelName: editData.channelName || defaultChannelName,
+        currentStatus: editData.currentStatus || 'Query',
+        fileNumber: editData.fileNumber || '',
+        bankUserId: editData.bankUserId || '',
+        bankPassword: editData.bankPassword || '',
+        propertyType: editData.propertyType || '',
+        provisionalBanks: editData.provisionalBanks ? editData.provisionalBanks.join(', ') : '',
+        referralId: editData.referralId || '',
+        entryDate: editData.entryDate ? new Date(editData.entryDate).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+        loginDate: editData.loginDate ? new Date(editData.loginDate).toISOString().split('T')[0] : '',
+        sanctionDate: editData.sanctionDate ? new Date(editData.sanctionDate).toISOString().split('T')[0] : '',
+        disbursementDate: editData.disbursementDate ? new Date(editData.disbursementDate).toISOString().split('T')[0] : '',
+        handoverDate: editData.handoverDate ? new Date(editData.handoverDate).toISOString().split('T')[0] : '',
+        referenceName: editData.referenceName || '',
+        referencePhone: editData.referencePhone || '',
+        referenceDetails: {
+          mobileNumber: editData.referenceDetails?.mobileNumber || '',
+          bankName: editData.referenceDetails?.bankName || '',
+          bankBranch: editData.referenceDetails?.bankBranch || '',
+          accountNumber: editData.referenceDetails?.accountNumber || '',
+          ifscCode: editData.referenceDetails?.ifscCode || '',
+        },
+        bankerDetails: {
+          name: editData.bankerDetails?.name || '',
+          mobileNumber: editData.bankerDetails?.mobileNumber || '',
+          emailId: editData.bankerDetails?.emailId || '',
+          handoverConfirmation: editData.bankerDetails?.handoverConfirmation || '',
+        },
+        handledBy: editData.handledBy?._id || editData.handledBy || '',
+        saleDeedAmount: editData.saleDeedAmount ? (editData.saleDeedAmount / 100).toString() : '',
+        ocrAmount: editData.ocrAmount ? (editData.ocrAmount / 100).toString() : '',
+        parallelFundingAmount: editData.parallelFundingAmount ? (editData.parallelFundingAmount / 100).toString() : '',
+        isFullDisbursed: editData.isFullDisbursed || false,
+        partPayments: (editData.partPayments || []).map(p => ({
+          amount: p.amount ? (p.amount / 100).toString() : '',
+          date: p.date ? new Date(p.date).toISOString().split('T')[0] : ''
+        })),
+      };
+    }
+    return {
+      customerName: '',
+      phone: '',
+      email: '',
+      profession: 'Salaried',
+      product: 'HL',
+      loanAmount: '',
       bankName: '',
-      bankBranch: '',
-      accountNumber: '',
-      ifscCode: '',
-    },
-    bankerDetails: {
-      name: '',
-      mobileNumber: '',
-      emailId: '',
-      handoverConfirmation: '',
-    },
-    handledBy: '',
+      channelName: defaultChannelName,
+      currentStatus: 'Query',
+      fileNumber: '',
+      bankUserId: '',
+      bankPassword: '',
+      propertyType: '',
+      provisionalBanks: '',
+      referralId: '',
+      entryDate: new Date().toISOString().split('T')[0],
+      loginDate: '',
+      sanctionDate: '',
+      disbursementDate: '',
+      handoverDate: '',
+      referenceName: '',
+      referencePhone: '',
+      referenceDetails: {
+        mobileNumber: '',
+        bankName: '',
+        bankBranch: '',
+        accountNumber: '',
+        ifscCode: '',
+      },
+      bankerDetails: {
+        name: '',
+        mobileNumber: '',
+        emailId: '',
+        handoverConfirmation: '',
+      },
+      handledBy: '',
+      saleDeedAmount: '',
+      ocrAmount: '',
+      parallelFundingAmount: '',
+      isFullDisbursed: false,
+      partPayments: [],
+    };
   });
 
   const [employees, setEmployees] = useState([]);
@@ -97,6 +152,28 @@ export default function AddCaseModal({ open, onClose, onCreated, defaultChannelN
     };
   }
 
+  function addPartPayment() {
+    setForm(f => ({
+      ...f,
+      partPayments: [...f.partPayments, { amount: '', date: new Date().toISOString().split('T')[0] }]
+    }));
+  }
+
+  function removePartPayment(index) {
+    setForm(f => ({
+      ...f,
+      partPayments: f.partPayments.filter((_, i) => i !== index)
+    }));
+  }
+
+  function updatePartPayment(index, field, value) {
+    setForm(f => {
+      const newList = [...f.partPayments];
+      newList[index] = { ...newList[index], [field]: value };
+      return { ...f, partPayments: newList };
+    });
+  }
+
   async function handleAddChannel() {
     if (!newChannelName.trim()) {
       setError('Channel name cannot be empty');
@@ -146,12 +223,26 @@ export default function AddCaseModal({ open, onClose, onCreated, defaultChannelN
         disbursementDate: form.disbursementDate ? new Date(form.disbursementDate) : undefined,
         handoverDate: form.handoverDate ? new Date(form.handoverDate) : undefined,
         handledBy: form.handledBy || undefined,
+        saleDeedAmount: form.saleDeedAmount ? rupeesToPaisa(parseFloat(form.saleDeedAmount)) : 0,
+        ocrAmount: form.ocrAmount ? rupeesToPaisa(parseFloat(form.ocrAmount)) : 0,
+        parallelFundingAmount: form.parallelFundingAmount ? rupeesToPaisa(parseFloat(form.parallelFundingAmount)) : 0,
+        isFullDisbursed: form.isFullDisbursed,
+        partPayments: form.partPayments.filter(p => p.amount && p.date).map(p => ({
+          amount: rupeesToPaisa(parseFloat(p.amount)),
+          date: new Date(p.date)
+        })),
       };
-      const r = await casesService.create(payload);
-      onCreated?.(r.case);
+      
+      if (editData) {
+        const r = await casesService.update(editData._id, payload);
+        onUpdated?.(r.case);
+      } else {
+        const r = await casesService.create(payload);
+        onCreated?.(r.case);
+      }
       onClose();
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to create case');
+      setError(err.response?.data?.error || (editData ? 'Failed to update case' : 'Failed to create case'));
     } finally {
       setSubmitting(false);
     }
@@ -164,7 +255,7 @@ export default function AddCaseModal({ open, onClose, onCreated, defaultChannelN
         className="w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-xl bg-white p-6 shadow-2xl"
       >
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-slate-800">Add New Case</h2>
+          <h2 className="text-lg font-semibold text-slate-800">{editData ? 'Edit Case' : 'Add New Case'}</h2>
           <button
             type="button"
             onClick={onClose}
@@ -273,7 +364,68 @@ export default function AddCaseModal({ open, onClose, onCreated, defaultChannelN
           />
         </div>
 
-        <div className="mt-5 flex justify-end gap-2">
+        {/* Disbursement Tracker Fields */}
+        <SectionTitle>Disbursement Tracker</SectionTitle>
+        <div className="grid grid-cols-3 gap-3 mb-4">
+          <Input label="Sale Deed Amount (₹)" type="number" min="0" {...field('saleDeedAmount')} />
+          <Input label="OCR Amount (₹)" type="number" min="0" {...field('ocrAmount')} />
+          <Input label="Parallel Funding Amount (₹)" type="number" min="0" {...field('parallelFundingAmount')} />
+          <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 col-span-3 mt-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={form.isFullDisbursed}
+              onChange={e => setForm(f => ({ ...f, isFullDisbursed: e.target.checked }))}
+              className="h-4 w-4 rounded border-slate-300 text-brand focus:ring-brand"
+            />
+            FULL Disbursed (Yes/No)
+          </label>
+        </div>
+
+        <div className="mb-4">
+          <div className="flex items-center justify-between border-t border-slate-200 pt-3 mb-2">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500">Part Payments</h3>
+            <button
+              type="button"
+              onClick={addPartPayment}
+              className="text-xs font-bold text-brand hover:underline"
+            >
+              + Add Part Payment
+            </button>
+          </div>
+          
+          <div className="space-y-2">
+            {form.partPayments.map((pp, i) => (
+              <div key={i} className="flex items-center gap-2 bg-slate-50 p-2 rounded-lg border border-slate-100">
+                <Input
+                  label="Amount (₹)"
+                  type="number"
+                  min="0"
+                  value={pp.amount}
+                  onChange={e => updatePartPayment(i, 'amount', e.target.value)}
+                />
+                <Input
+                  label="Date"
+                  type="date"
+                  value={pp.date}
+                  onChange={e => updatePartPayment(i, 'date', e.target.value)}
+                />
+                <button
+                  type="button"
+                  onClick={() => removePartPayment(i)}
+                  className="mt-5 p-1 text-red-500 hover:text-red-700"
+                  title="Remove"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+            {form.partPayments.length === 0 && (
+              <div className="text-center py-2 text-xs text-slate-400 italic">No part payments added.</div>
+            )}
+          </div>
+        </div>
+
+        <div className="mt-5 flex justify-end gap-2 border-t border-slate-200 pt-4">
           <button
             type="button"
             onClick={onClose}
@@ -286,7 +438,7 @@ export default function AddCaseModal({ open, onClose, onCreated, defaultChannelN
             disabled={submitting || dropdownLoading}
             className="rounded-md bg-brand px-4 py-1.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
           >
-            {submitting ? 'Creating…' : 'Create Case'}
+            {submitting ? (editData ? 'Updating…' : 'Creating…') : (editData ? 'Update Case' : 'Create Case')}
           </button>
         </div>
       </form>

@@ -77,8 +77,10 @@ const docCheckboxCol = (key, headerName) => ({
 
 const STATUS_VALUE_FORMATTER = (p) => p.value || '';
 
-export default function CasesDataGrid({ rows, loading, onRowClick, onCellEdit, onGridReady, quickFilter }) {
+export default function CasesDataGrid({ rows, loading, onRowClick, onCellEdit, onGridReady, quickFilter, onEdit, onDelete }) {
   const gridRef = useRef(null);
+
+  const context = useMemo(() => ({ onEdit, onDelete }), [onEdit, onDelete]);
 
   const columnDefs = useMemo(
     () => [
@@ -230,11 +232,58 @@ export default function CasesDataGrid({ rows, loading, onRowClick, onCellEdit, o
       },
       dateCol('sanctionDate', 'Sanction Date'),
       dateCol('disbursementDate', 'Disb. Date'),
+      {
+        headerName: 'Full Disbursed',
+        field: 'isFullDisbursed',
+        width: 130,
+        editable: false,
+        cellRenderer: (p) => {
+          if (p.value) {
+            return <span className="text-emerald-600 font-semibold">Yes</span>;
+          }
+          return <span className="text-amber-600 font-semibold">No</span>;
+        },
+      },
       currencyCol('pendingPaymentAmount', 'Pending Pay', {
         width: 130,
         editable: false,
         cellClass: 'text-right tabular-nums text-red-600 font-semibold',
       }),
+      {
+        headerName: 'Actions',
+        field: 'actions',
+        pinned: 'right',
+        width: 100,
+        editable: false,
+        filter: false,
+        sortable: false,
+        cellRenderer: (p) => {
+          return (
+            <div className="flex items-center gap-2 pt-1.5 opacity-60 hover:opacity-100 transition-opacity">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  p.context?.onEdit?.(p.data);
+                }}
+                className="text-indigo-600 hover:text-indigo-800"
+                title="Edit Case"
+              >
+                ✏️
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  p.context?.onDelete?.(p.data);
+                }}
+                className="text-red-600 hover:text-red-800"
+                title="Delete Case"
+              >
+                🗑️
+              </button>
+            </div>
+          );
+        },
+      },
     ],
     []
   );
@@ -287,6 +336,7 @@ export default function CasesDataGrid({ rows, loading, onRowClick, onCellEdit, o
     <div className="ag-theme-quartz h-full w-full">
       <AgGridReact
         ref={gridRef}
+        context={context}
         rowData={rows}
         columnDefs={columnDefs}
         defaultColDef={defaultColDef}

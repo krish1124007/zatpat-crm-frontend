@@ -17,7 +17,6 @@ import Contests from './pages/Contests.jsx';
 import FollowUps from './pages/FollowUps.jsx';
 import Settings from './pages/Settings.jsx';
 import ReferencePartners from './pages/ReferencePartners.jsx';
-import PartPayments from './pages/PartPayments.jsx';
 import DisbursementTrackers from './pages/DisbursementTrackers.jsx';
 
 
@@ -51,8 +50,6 @@ export default function App() {
         <Route path="/contests" element={<Contests />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/reference-partners" element={<ReferencePartners />} />
-        <Route path="/part-payments" element={<PartPayments />} />
-        <Route path="/disbursement-trackers" element={<DisbursementTrackers />} />
 
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

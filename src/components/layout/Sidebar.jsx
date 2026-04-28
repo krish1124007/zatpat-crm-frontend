@@ -18,8 +18,6 @@ const NAV = [
   { to: '/cases/status/NotInterested', label: 'Not Interested', icon: '⬜', statusDot: 'NotInterested' },
   { type: 'divider', label: 'Tracking' },
   { to: '/followups', label: 'Follow-ups', icon: '🔔' },
-  { to: '/part-payments', label: 'Part Payments', icon: '💳' },
-  { to: '/disbursement-trackers', label: 'Disbursement Tracker', icon: '🚚' },
   { to: '/reference-partners', label: 'Reference Partners', icon: '👥' },
   { type: 'divider', label: 'Finance' },
   { to: '/partners', label: 'Partners', icon: '🤝' },

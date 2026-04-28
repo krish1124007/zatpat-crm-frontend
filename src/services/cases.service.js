@@ -35,9 +35,6 @@ export const casesService = {
   referencePartners(params = {}) {
     return api.get('/cases/reference-partners', { params }).then((r) => r.data);
   },
-  partPayments(params = {}) {
-    return api.get('/cases/part-payments', { params }).then((r) => r.data);
-  },
   // Dropdown options
   getAllDropdownOptions() {
     return api.get('/cases/dropdowns/all').then((r) => r.data);
