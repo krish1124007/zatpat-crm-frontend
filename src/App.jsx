@@ -17,7 +17,7 @@ import Contests from './pages/Contests.jsx';
 import FollowUps from './pages/FollowUps.jsx';
 import Settings from './pages/Settings.jsx';
 import ReferencePartners from './pages/ReferencePartners.jsx';
-import DisbursementTrackers from './pages/DisbursementTrackers.jsx';
+
 
 
 export default function App() {
