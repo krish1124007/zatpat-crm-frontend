@@ -122,6 +122,8 @@ export default function Dashboard() {
                 hint={formatINR(kpis.partPayments?.amount || 0)} accent="text-amber-600" onClick={() => handleKpiClick('Part Payments', { hasPartPayment: 'true' })} />
               <Kpi label="Unpaid Ref. Payouts" value={kpis.unpaidReferralPayout?.count || 0}
                 hint={formatINR(kpis.unpaidReferralPayout?.amount || 0)} accent="text-red-600" onClick={() => window.location.href = '#/reference-partners'} />
+              <Kpi label="Total Partners" value={kpis.totalPartners || 0} accent="text-cyan-700" onClick={() => window.location.href = '#/partners'} />
+              <Kpi label="Total Invoices" value={kpis.totalInvoices || 0} accent="text-orange-700" onClick={() => window.location.href = '#/invoices'} />
             </div>
 
             {/* ── ROW 3: Financial Summary ── */}

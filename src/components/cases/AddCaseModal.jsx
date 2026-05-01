@@ -14,6 +14,7 @@ export default function AddCaseModal({ open, onClose, onCreated, defaultChannelN
         profession: editData.profession || 'Salaried',
         product: editData.product || 'HL',
         loanAmount: editData.loanAmount ? (editData.loanAmount / 100).toString() : '',
+        cibilIssue: editData.cibilIssue || '',
         bankName: editData.bankName || '',
         channelName: editData.channelName || defaultChannelName,
         currentStatus: editData.currentStatus || 'Query',
@@ -72,6 +73,7 @@ export default function AddCaseModal({ open, onClose, onCreated, defaultChannelN
     profession: 'Salaried',
     product: 'HL',
     loanAmount: '',
+    cibilIssue: '',
     bankName: '',
     channelName: defaultChannelName,
     currentStatus: 'Query',
@@ -396,6 +398,7 @@ export default function AddCaseModal({ open, onClose, onCreated, defaultChannelN
           )}
 
           <Input label="Loan Amount (₹)" type="number" min="0" {...field('loanAmount')} />
+          <Select label="CIBIL Issue" options={['Yes', 'No']} {...field('cibilIssue')} hasEmpty />
           
           <SelectWithAdd
             label="Property Type"

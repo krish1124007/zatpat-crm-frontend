@@ -15,7 +15,9 @@ export default function CasesPage() {
 
   const [activeTab, setActiveTab] = useState('All');
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || '');
+  const [statusFilter, setStatusFilter] = useState(
+    searchParams.get('status') ? searchParams.get('status').split(',') : []
+  );
   const [pendingOnly, setPendingOnly] = useState(searchParams.get('pendingPayment') === 'true');
   const [handlerFilter, setHandlerFilter] = useState(searchParams.get('handledBy') || '');
   const [selectedId, setSelectedId] = useState(null);
@@ -30,7 +32,7 @@ export default function CasesPage() {
     try {
       const params = {};
       if (activeTab !== 'All') params.channelName = activeTab;
-      if (statusFilter) params.status = statusFilter;
+      if (statusFilter.length > 0) params.status = statusFilter.join(',');
       if (pendingOnly) params.pendingPayment = 'true';
       if (handlerFilter) params.handledBy = handlerFilter;
       const r = await casesService.list(params);
@@ -89,16 +91,37 @@ export default function CasesPage() {
           onChange={(e) => setSearch(e.target.value)}
           className="w-72 rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
         />
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm"
-        >
-          <option value="">All statuses</option>
-          {LOAN_STATUSES.map((s) => (
-            <option key={s}>{s}</option>
-          ))}
-        </select>
+        <div className="relative group">
+          <button className="flex items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-50">
+            <span>{statusFilter.length === 0 ? 'All statuses' : `${statusFilter.length} statuses`}</span>
+            <span className="text-[10px]">▼</span>
+          </button>
+          <div className="absolute left-0 top-full z-50 mt-1 hidden w-60 rounded-md border border-slate-200 bg-white p-2 shadow-lg group-focus-within:block hover:block">
+            <div className="max-h-60 overflow-y-auto">
+              {LOAN_STATUSES.map((s) => (
+                <label key={s} className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-50 cursor-pointer text-sm">
+                  <input
+                    type="checkbox"
+                    checked={statusFilter.includes(s)}
+                    onChange={(e) => {
+                      if (e.target.checked) setStatusFilter([...statusFilter, s]);
+                      else setStatusFilter(statusFilter.filter((x) => x !== s));
+                    }}
+                  />
+                  {s}
+                </label>
+              ))}
+            </div>
+            {statusFilter.length > 0 && (
+              <button 
+                onClick={() => setStatusFilter([])}
+                className="mt-2 w-full border-t border-slate-100 pt-2 text-xs font-bold text-red-600 hover:underline text-left px-2"
+              >
+                Clear all
+              </button>
+            )}
+          </div>
+        </div>
         <label className="flex items-center gap-1 text-sm text-slate-600">
           <input
             type="checkbox"
@@ -155,7 +178,7 @@ export default function CasesPage() {
           onRowClick={(row) => setSelectedId(row._id)}
           onCellEdit={handleCellEdit}
           onDelete={async (row) => {
-            if (window.confirm('Are you sure you want to delete this case? This action cannot be undone.')) {
+            if (window.confirm('Move this case to Recycle Bin?')) {
               try {
                 await casesService.remove(row._id);
                 setRows((rs) => rs.filter((r) => r._id !== row._id));

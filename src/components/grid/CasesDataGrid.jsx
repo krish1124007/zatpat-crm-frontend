@@ -77,10 +77,10 @@ const docCheckboxCol = (key, headerName) => ({
 
 const STATUS_VALUE_FORMATTER = (p) => p.value || '';
 
-export default function CasesDataGrid({ rows, loading, onRowClick, onCellEdit, onGridReady, quickFilter, onEdit, onDelete }) {
+export default function CasesDataGrid({ rows, loading, onRowClick, onCellEdit, onGridReady, quickFilter, onEdit, onDelete, onRestore, isRecycleBin }) {
   const gridRef = useRef(null);
 
-  const context = useMemo(() => ({ onEdit, onDelete }), [onEdit, onDelete]);
+  const context = useMemo(() => ({ onEdit, onDelete, onRestore, isRecycleBin }), [onEdit, onDelete, onRestore, isRecycleBin]);
 
   const columnDefs = useMemo(
     () => [
@@ -175,6 +175,14 @@ export default function CasesDataGrid({ rows, loading, onRowClick, onCellEdit, o
       dateCol('followDate', 'Follow Date'),
       dateCol('loginDate', 'Login Date'),
       currencyCol('loanAmount', 'Loan Amount', { width: 135 }),
+      {
+        field: 'cibilIssue',
+        headerName: 'CIBIL Issue',
+        editable: true,
+        cellEditor: 'agSelectCellEditor',
+        cellEditorParams: { values: ['', 'Yes', 'No'] },
+        width: 100,
+      },
       currencyCol('sanctionedAmount', 'Sanction Amt', { width: 135 }),
       currencyCol('disbursedAmount', 'Disbursed Amt', { width: 135 }),
       selectCol('disbursementType', 'Disb. Type', ['', ...DISBURSEMENT_TYPES], { width: 110 }),
@@ -260,6 +268,22 @@ export default function CasesDataGrid({ rows, loading, onRowClick, onCellEdit, o
         filter: false,
         sortable: false,
         cellRenderer: (p) => {
+          if (p.context?.isRecycleBin) {
+            return (
+              <div className="pt-1.5">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    p.context?.onRestore?.(p.data);
+                  }}
+                  className="rounded bg-emerald-50 px-2 py-0.5 text-[10px] font-bold text-emerald-700 hover:bg-emerald-100"
+                  title="Restore Case"
+                >
+                  🔄 Restore
+                </button>
+              </div>
+            );
+          }
           return (
             <div className="flex items-center gap-2 pt-1.5 opacity-60 hover:opacity-100 transition-opacity">
               <button

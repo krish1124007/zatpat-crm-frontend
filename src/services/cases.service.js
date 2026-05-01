@@ -16,6 +16,9 @@ export const casesService = {
   remove(id) {
     return api.delete(`/cases/${id}`).then((r) => r.data);
   },
+  restore(id) {
+    return api.post(`/cases/${id}/restore`).then((r) => r.data);
+  },
   addFollowUp(id, payload) {
     return api.post(`/cases/${id}/followups`, payload).then((r) => r.data);
   },

@@ -5,17 +5,18 @@ import { formatINR, formatDate, toDateInput } from '../utils/format.js';
 import { LOAN_STATUSES, STATUS_COLORS, POST_DISBURSEMENT_STAGES } from '../utils/constants.js';
 
 const statusLabels = {
-  Query: 'Query Cases',
-  ReadyLogin: 'Ready for Login',
-  Hold: 'On Hold',
-  LoginDone: 'Login Done',
-  UnderProcess: 'Under Process',
-  BankFinalized: 'Bank Finalized',
-  Sanctioned: 'Sanctioned',
-  Disbursed: 'Disbursed',
-  Rejected: 'Rejected',
-  Cancelled: 'Cancelled',
-  NotInterested: 'Not Interested',
+  'Query': 'Query',
+  'Hold': 'Hold',
+  'Ready Login': 'Ready Login',
+  'Bank finalized': 'Bank finalized',
+  'Under Bank Workout': 'Under Bank Workout',
+  'Under Login Query': 'Under Login Query',
+  'Login done - under process': 'Login done - under process',
+  'Sanctioned': 'Sanctioned',
+  'Disbursed': 'Disbursed',
+  'Rejected': 'Rejected',
+  'Cancelled': 'Cancelled',
+  'Not interested': 'Not interested',
 };
 
 export default function CasesByStatusPage() {

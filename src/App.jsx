@@ -17,6 +17,7 @@ import Contests from './pages/Contests.jsx';
 import FollowUps from './pages/FollowUps.jsx';
 import Settings from './pages/Settings.jsx';
 import ReferencePartners from './pages/ReferencePartners.jsx';
+import RecycleBin from './pages/RecycleBin.jsx';
 
 
 
@@ -39,6 +40,7 @@ export default function App() {
       >
         <Route path="/" element={<Dashboard />} />
         <Route path="/cases" element={<Cases />} />
+        <Route path="/recycle-bin" element={<RecycleBin />} />
         <Route path="/cases/status/:status" element={<CasesByStatus />} />
         <Route path="/partners" element={<Partners />} />
         <Route path="/invoices" element={<Invoices />} />
