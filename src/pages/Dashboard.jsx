@@ -325,7 +325,10 @@ export default function Dashboard() {
                   >
                     <span className="flex items-center gap-2">
                       <span className="text-xs font-mono text-slate-400">#{c.srNo}</span>
-                      <span className="font-medium text-slate-800">{c.customerName}</span>
+                      <span className="font-medium text-slate-800">
+                        {c.cibilIssue === 'Yes' && <span className="text-red-500 mr-1" title="CIBIL Issue">🔴</span>}
+                        {c.customerName}
+                      </span>
                       <span className="text-xs text-slate-500">{c.bankName || '---'}</span>
                       {c.handledBy && (
                         <span className="text-xs text-indigo-600">{c.handledBy.name}</span>
@@ -423,7 +426,10 @@ export default function Dashboard() {
                     <div key={c._id} className="flex items-center justify-between border-b border-slate-100 py-2 text-sm last:border-0 hover:bg-slate-50">
                       <span className="flex items-center gap-2">
                         <span className="text-xs font-mono text-slate-400">#{c.srNo}</span>
-                        <span className="font-medium text-slate-800">{c.customerName}</span>
+                        <span className="font-medium text-slate-800">
+                          {c.cibilIssue === 'Yes' && <span className="text-red-500 mr-1" title="CIBIL Issue">🔴</span>}
+                          {c.customerName}
+                        </span>
                         <span className="text-xs text-slate-500">{c.bankName || '---'}</span>
                         {c.handledBy && <span className="text-xs text-indigo-600">{c.handledBy.name}</span>}
                       </span>

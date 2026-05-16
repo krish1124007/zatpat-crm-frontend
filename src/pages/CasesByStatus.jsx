@@ -3,6 +3,8 @@ import { useParams, Link } from 'react-router-dom';
 import { casesService } from '../services/cases.service.js';
 import { formatINR, formatDate, toDateInput } from '../utils/format.js';
 import { LOAN_STATUSES, STATUS_COLORS, POST_DISBURSEMENT_STAGES } from '../utils/constants.js';
+import AddCaseModal from '../components/cases/AddCaseModal.jsx';
+
 
 const statusLabels = {
   'Query': 'Query',
@@ -30,6 +32,8 @@ export default function CasesByStatusPage() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [postDisbStageFilter, setPostDisbStageFilter] = useState('');
+  const [editOpen, setEditOpen] = useState(null);
+
 
   async function load() {
     setLoading(true);
@@ -159,11 +163,12 @@ export default function CasesByStatusPage() {
                 <th className="px-3 py-2 text-right font-semibold">Pending</th>
                 <th className="px-3 py-2 text-left font-semibold">Follow Date</th>
                 {status === 'Disbursed' && <th className="px-3 py-2 text-left font-semibold">Post-Disb</th>}
+                <th className="px-3 py-2 text-right font-semibold">Actions</th>
               </tr>
             </thead>
             <tbody>
-              {loading && <tr><td colSpan={15} className="p-4 text-slate-500">Loading…</td></tr>}
-              {!loading && rows.length === 0 && <tr><td colSpan={15} className="p-4 text-slate-500">No cases.</td></tr>}
+              {loading && <tr><td colSpan={16} className="p-4 text-slate-500">Loading…</td></tr>}
+              {!loading && rows.length === 0 && <tr><td colSpan={16} className="p-4 text-slate-500">No cases.</td></tr>}
               {rows.map((c) => (
                 <tr
                   key={c._id}
@@ -172,7 +177,12 @@ export default function CasesByStatusPage() {
                 >
                   <td className="px-3 py-2 font-mono text-slate-500">#{c.srNo}</td>
                   <td className="px-3 py-2 font-mono">{c.fileNumber || '—'}</td>
-                  <td className="px-3 py-2 font-medium text-slate-800">{c.customerName}</td>
+                  <td className="px-3 py-2 font-medium text-slate-800">
+                    <div className="flex items-center gap-1.5">
+                      {c.cibilIssue === 'Yes' && <span className="text-red-500" title="CIBIL Issue">🔴</span>}
+                      <span>{c.customerName}</span>
+                    </div>
+                  </td>
                   <td className="px-3 py-2">{c.phone}</td>
                   <td className="px-3 py-2">{c.product}</td>
                   <td className="px-3 py-2">{c.bankName || '—'}</td>
@@ -191,12 +201,32 @@ export default function CasesByStatusPage() {
                       </span>
                     </td>
                   )}
+                  <td className="px-3 py-2 text-right">
+                    <button
+                      onClick={() => setEditOpen(c._id)}
+                      className="text-indigo-600 hover:text-indigo-800"
+                      title="Edit Case"
+                    >
+                      ✏️ Edit
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
       </div>
+      {editOpen && (
+        <AddCaseModal
+          open={!!editOpen}
+          onClose={() => setEditOpen(null)}
+          editData={rows.find((r) => r._id === editOpen)}
+          onUpdated={(updated) => {
+            setRows((rs) => rs.map((r) => (r._id === updated._id ? updated : r)));
+          }}
+          defaultChannelName="Zatpat"
+        />
+      )}
     </div>
   );
 }

@@ -1,5 +1,8 @@
+import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import { STATUS_COLORS } from '../../utils/constants.js';
+import { dashboardService } from '../../services/dashboard.service.js';
+
 
 const NAV = [
   { to: '/', label: 'Dashboard', icon: '📊' },
@@ -34,6 +37,18 @@ const NAV = [
 ];
 
 export default function Sidebar({ open, onClose }) {
+  const [counts, setCounts] = useState({});
+
+  useEffect(() => {
+    dashboardService.statusBreakdown().then((res) => {
+      const map = {};
+      (res.items || []).forEach((it) => {
+        map[it.status] = it.count;
+      });
+      setCounts(map);
+    }).catch(console.error);
+  }, []);
+
   return (
     <>
       {open && (
@@ -84,6 +99,11 @@ export default function Sidebar({ open, onClose }) {
                   <span className="text-sm">{item.icon}</span>
                 )}
                 <span className="truncate">{item.label}</span>
+                {item.statusDot && counts[item.statusDot] !== undefined && (
+                  <span className="ml-auto text-[10px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded-full">
+                    {counts[item.statusDot]}
+                  </span>
+                )}
               </NavLink>
             );
           })}

@@ -107,6 +107,12 @@ export default function CasesDataGrid({ rows, loading, onRowClick, onCellEdit, o
         pinned: 'left',
         width: 170,
         cellClass: 'font-semibold',
+        cellRenderer: (p) => (
+          <div className="flex items-center gap-1.5">
+            {p.data?.cibilIssue === 'Yes' && <span className="text-red-500" title="CIBIL Issue">🔴</span>}
+            <span>{p.value}</span>
+          </div>
+        ),
       },
       {
         field: 'phone',
