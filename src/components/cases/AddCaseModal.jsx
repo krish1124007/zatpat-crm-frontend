@@ -54,74 +54,78 @@ export default function AddCaseModal({ open, onClose, onCreated, defaultChannelN
           amount: p.amount ? (p.amount / 100).toString() : '',
           date: p.date ? new Date(p.date).toISOString().split('T')[0] : ''
         })),
-      sendFeedbackForm: editData.sendFeedbackForm || '',
-      sendReviewLink: editData.sendReviewLink || '',
+        transactionType: editData.transactionType || '',
+        constructionStage: editData.constructionStage != null ? editData.constructionStage.toString() : '',
+        sendFeedbackForm: editData.sendFeedbackForm || '',
+        sendReviewLink: editData.sendReviewLink || '',
+        referralPayout: {
+          percentage: editData.referralPayout?.percentage ?? '',
+          amount: editData.referralPayout?.amount ? (editData.referralPayout.amount / 100).toString() : '',
+          status: editData.referralPayout?.status || '',
+          date: editData.referralPayout?.date ? new Date(editData.referralPayout.date).toISOString().split('T')[0] : '',
+          mode: editData.referralPayout?.mode || '',
+          bankName: editData.referralPayout?.bankName || '',
+        },
+      };
+    }
+    return {
+      customerName: '',
+      phone: '',
+      email: '',
+      profession: 'Salaried',
+      product: 'HL',
+      loanAmount: '',
+      cibilIssue: '',
+      bankName: '',
+      channelName: defaultChannelName,
+      currentStatus: 'Query',
+      fileNumber: '',
+      bankUserId: '',
+      bankPassword: '',
+      propertyType: '',
+      provisionalBanks: '',
+      referralId: '',
+      entryDate: new Date().toISOString().split('T')[0],
+      loginDate: '',
+      sanctionDate: '',
+      disbursementDate: '',
+      handoverDate: '',
+      referenceName: '',
+      referencePhone: '',
+      referenceDetails: {
+        mobileNumber: '',
+        bankName: '',
+        bankBranch: '',
+        accountNumber: '',
+        ifscCode: '',
+      },
+      bankerDetails: {
+        name: '',
+        mobileNumber: '',
+        emailId: '',
+        handoverConfirmation: '',
+        bankerConfirmation: '',
+      },
+      handledBy: '',
+      saleDeedAmount: '',
+      ocrAmount: '',
+      parallelFundingAmount: '',
+      isFullDisbursed: false,
+      partPayments: [],
+      transactionType: '',
+      constructionStage: '',
+      sendFeedbackForm: '',
+      sendReviewLink: '',
       referralPayout: {
-        percentage: editData.referralPayout?.percentage ?? '',
-        amount: editData.referralPayout?.amount ? (editData.referralPayout.amount / 100).toString() : '',
-        status: editData.referralPayout?.status || '',
-        date: editData.referralPayout?.date ? new Date(editData.referralPayout.date).toISOString().split('T')[0] : '',
-        mode: editData.referralPayout?.mode || '',
-        bankName: editData.referralPayout?.bankName || '',
+        percentage: '',
+        amount: '',
+        status: '',
+        date: '',
+        mode: '',
+        bankName: '',
       },
     };
-  }
-  return {
-    customerName: '',
-    phone: '',
-    email: '',
-    profession: 'Salaried',
-    product: 'HL',
-    loanAmount: '',
-    cibilIssue: '',
-    bankName: '',
-    channelName: defaultChannelName,
-    currentStatus: 'Query',
-    fileNumber: '',
-    bankUserId: '',
-    bankPassword: '',
-    propertyType: '',
-    provisionalBanks: '',
-    referralId: '',
-    entryDate: new Date().toISOString().split('T')[0],
-    loginDate: '',
-    sanctionDate: '',
-    disbursementDate: '',
-    handoverDate: '',
-    referenceName: '',
-    referencePhone: '',
-    referenceDetails: {
-      mobileNumber: '',
-      bankName: '',
-      bankBranch: '',
-      accountNumber: '',
-      ifscCode: '',
-    },
-    bankerDetails: {
-      name: '',
-      mobileNumber: '',
-      emailId: '',
-      handoverConfirmation: '',
-      bankerConfirmation: '',
-    },
-    handledBy: '',
-    saleDeedAmount: '',
-    ocrAmount: '',
-    parallelFundingAmount: '',
-    isFullDisbursed: false,
-    partPayments: [],
-    sendFeedbackForm: '',
-    sendReviewLink: '',
-    referralPayout: {
-      percentage: '',
-      amount: '',
-      status: '',
-      date: '',
-      mode: '',
-      bankName: '',
-    },
-  };
-});
+  });
 
   const [employees, setEmployees] = useState([]);
   const [submitting, setSubmitting] = useState(false);
@@ -158,19 +162,27 @@ export default function AddCaseModal({ open, onClose, onCreated, defaultChannelN
     try {
       setDropdownLoading(true);
       const options = await casesService.getAllDropdownOptions();
-      setChannelOptions([...new Set([...CHANNEL_NAMES, ...(options.channelName?.map(o => o.value) || [])])]);
-      setBankOptions(options.bankName?.map(o => o.value) || []);
-      setProductOptions([...new Set([...PRODUCTS, ...(options.product?.map(o => o.value) || [])])]);
-      setPropertyTypeOptions([...new Set([...PROPERTY_TYPES, ...(options.propertyType?.map(o => o.value) || [])])]);
-      setStatusOptions([...new Set([...LOAN_STATUSES, ...(options.status?.map(o => o.value) || [])])]);
+      // Store as objects {label, value, _id} so delete is possible for DB options
+      const toObjs = (list) => (list || []).map(o => ({ label: o.label, value: o.value, _id: o._id || null }));
+      const staticToObjs = (arr) => arr.map(v => ({ label: v, value: v, _id: null }));
+      const mergeOptions = (staticArr, dbArr) => {
+        const seen = new Set();
+        const all = [...staticToObjs(staticArr), ...toObjs(dbArr)];
+        return all.filter(o => { if (seen.has(o.value)) return false; seen.add(o.value); return true; });
+      };
+      setChannelOptions(mergeOptions(CHANNEL_NAMES, options.channelName));
+      setBankOptions(toObjs(options.bankName));
+      setProductOptions(mergeOptions(PRODUCTS, options.product));
+      setPropertyTypeOptions(mergeOptions(PROPERTY_TYPES, options.propertyType));
+      setStatusOptions(mergeOptions(LOAN_STATUSES, options.status));
     } catch (err) {
       console.error('Failed to load dropdown options:', err);
       // Fallback to constants
-      setChannelOptions(CHANNEL_NAMES);
+      setChannelOptions(CHANNEL_NAMES.map(v => ({ label: v, value: v, _id: null })));
       setBankOptions([]);
-      setProductOptions(PRODUCTS);
-      setPropertyTypeOptions(PROPERTY_TYPES);
-      setStatusOptions(LOAN_STATUSES);
+      setProductOptions(PRODUCTS.map(v => ({ label: v, value: v, _id: null })));
+      setPropertyTypeOptions(PROPERTY_TYPES.map(v => ({ label: v, value: v, _id: null })));
+      setStatusOptions(LOAN_STATUSES.map(v => ({ label: v, value: v, _id: null })));
     } finally {
       setDropdownLoading(false);
     }
@@ -223,8 +235,9 @@ export default function AddCaseModal({ open, onClose, onCreated, defaultChannelN
       return;
     }
     try {
-      await casesService.createDropdownOption('channelName', newChannelName, newChannelName);
-      setChannelOptions([...channelOptions, newChannelName]);
+      const r = await casesService.createDropdownOption('channelName', newChannelName, newChannelName);
+      const newObj = { label: newChannelName, value: newChannelName, _id: r.option?._id || null };
+      setChannelOptions([...channelOptions, newObj]);
       setForm((f) => ({ ...f, channelName: newChannelName }));
       setNewChannelName('');
       setShowAddChannel(false);
@@ -239,8 +252,9 @@ export default function AddCaseModal({ open, onClose, onCreated, defaultChannelN
       return;
     }
     try {
-      await casesService.createDropdownOption('bankName', newBankName, newBankName);
-      setBankOptions([...bankOptions, newBankName]);
+      const r = await casesService.createDropdownOption('bankName', newBankName, newBankName);
+      const newObj = { label: newBankName, value: newBankName, _id: r.option?._id || null };
+      setBankOptions([...bankOptions, newObj]);
       setForm((f) => ({ ...f, bankName: newBankName }));
       setNewBankName('');
       setShowAddBank(false);
@@ -255,8 +269,9 @@ export default function AddCaseModal({ open, onClose, onCreated, defaultChannelN
       return;
     }
     try {
-      await casesService.createDropdownOption('product', newProductName, newProductName);
-      setProductOptions([...productOptions, newProductName]);
+      const r = await casesService.createDropdownOption('product', newProductName, newProductName);
+      const newObj = { label: newProductName, value: newProductName, _id: r.option?._id || null };
+      setProductOptions([...productOptions, newObj]);
       setForm((f) => ({ ...f, product: newProductName }));
       setNewProductName('');
       setShowAddProduct(false);
@@ -271,8 +286,9 @@ export default function AddCaseModal({ open, onClose, onCreated, defaultChannelN
       return;
     }
     try {
-      await casesService.createDropdownOption('propertyType', newPropertyTypeName, newPropertyTypeName);
-      setPropertyTypeOptions([...propertyTypeOptions, newPropertyTypeName]);
+      const r = await casesService.createDropdownOption('propertyType', newPropertyTypeName, newPropertyTypeName);
+      const newObj = { label: newPropertyTypeName, value: newPropertyTypeName, _id: r.option?._id || null };
+      setPropertyTypeOptions([...propertyTypeOptions, newObj]);
       setForm((f) => ({ ...f, propertyType: newPropertyTypeName }));
       setNewPropertyTypeName('');
       setShowAddPropertyType(false);
@@ -287,13 +303,25 @@ export default function AddCaseModal({ open, onClose, onCreated, defaultChannelN
       return;
     }
     try {
-      await casesService.createDropdownOption('status', newStatusName, newStatusName);
-      setStatusOptions([...statusOptions, newStatusName]);
+      const r = await casesService.createDropdownOption('status', newStatusName, newStatusName);
+      const newObj = { label: newStatusName, value: newStatusName, _id: r.option?._id || null };
+      setStatusOptions([...statusOptions, newObj]);
       setForm((f) => ({ ...f, currentStatus: newStatusName }));
       setNewStatusName('');
       setShowAddStatus(false);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to add status');
+    }
+  }
+
+  async function handleDeleteDropdownOption(optionId, optionValue, setterFn, currentOptions) {
+    if (!optionId) return; // static options can't be deleted
+    if (!window.confirm(`Delete option "${optionValue}" from the dropdown? This won't affect existing cases.`)) return;
+    try {
+      await casesService.deleteDropdownOption(optionId);
+      setterFn(currentOptions.filter(o => o._id !== optionId));
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to delete option');
     }
   }
 
@@ -322,6 +350,10 @@ export default function AddCaseModal({ open, onClose, onCreated, defaultChannelN
           amount: rupeesToPaisa(parseFloat(p.amount)),
           date: new Date(p.date)
         })),
+        transactionType: form.transactionType || '',
+        constructionStage: form.constructionStage !== '' && form.constructionStage != null
+          ? parseFloat(form.constructionStage)
+          : null,
         referralPayout: {
           percentage: Number(form.referralPayout.percentage) || 0,
           amount: Number(form.referralPayout.amount) ? rupeesToPaisa(parseFloat(form.referralPayout.amount)) : 0,
@@ -382,10 +414,11 @@ export default function AddCaseModal({ open, onClose, onCreated, defaultChannelN
         <div className="grid grid-cols-3 gap-3 mb-4">
           <SelectWithAdd
             label="Product"
-            options={productOptions}
+            optionObjects={productOptions}
             value={form.product}
             onChange={(e) => setForm((f) => ({ ...f, product: e.target.value }))}
             onAddClick={() => setShowAddProduct(true)}
+            onDeleteOption={(id, val) => handleDeleteDropdownOption(id, val, setProductOptions, productOptions)}
           />
           {showAddProduct && (
             <AddOptionForm
@@ -399,13 +432,32 @@ export default function AddCaseModal({ open, onClose, onCreated, defaultChannelN
 
           <Input label="Loan Amount (₹)" type="number" min="0" {...field('loanAmount')} />
           <Select label="CIBIL Issue" options={['Yes', 'No']} {...field('cibilIssue')} hasEmpty />
+
+          {/* Transaction Type — new field */}
+          <Select label="Transaction Type" options={['Builder Purchase', 'Resale']} {...field('transactionType')} hasEmpty />
+
+          {/* Construction Stage — new field */}
+          <label className="block">
+            <span className="text-xs font-medium text-slate-600">Construction Stage (%)</span>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              step="0.1"
+              value={form.constructionStage}
+              onChange={(e) => setForm((f) => ({ ...f, constructionStage: e.target.value }))}
+              placeholder="e.g. 45.5"
+              className="mt-0.5 w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+            />
+          </label>
           
           <SelectWithAdd
             label="Property Type"
-            options={propertyTypeOptions}
+            optionObjects={propertyTypeOptions}
             value={form.propertyType}
             onChange={(e) => setForm((f) => ({ ...f, propertyType: e.target.value }))}
             onAddClick={() => setShowAddPropertyType(true)}
+            onDeleteOption={(id, val) => handleDeleteDropdownOption(id, val, setPropertyTypeOptions, propertyTypeOptions)}
           />
           {showAddPropertyType && (
             <AddOptionForm
@@ -419,10 +471,11 @@ export default function AddCaseModal({ open, onClose, onCreated, defaultChannelN
 
           <SelectWithAdd
             label="Bank Name"
-            options={bankOptions}
+            optionObjects={bankOptions}
             value={form.bankName}
             onChange={(e) => setForm((f) => ({ ...f, bankName: e.target.value }))}
             onAddClick={() => setShowAddBank(true)}
+            onDeleteOption={(id, val) => handleDeleteDropdownOption(id, val, setBankOptions, bankOptions)}
           />
           {showAddBank && (
             <AddOptionForm
@@ -436,10 +489,11 @@ export default function AddCaseModal({ open, onClose, onCreated, defaultChannelN
           <Input label="Provisional Banks" {...field('provisionalBanks')} placeholder="Bank1, Bank2, ..." />
           <SelectWithAdd
             label="Channel Name"
-            options={channelOptions}
+            optionObjects={channelOptions}
             value={form.channelName}
             onChange={(e) => setForm((f) => ({ ...f, channelName: e.target.value }))}
             onAddClick={() => setShowAddChannel(true)}
+            onDeleteOption={(id, val) => handleDeleteDropdownOption(id, val, setChannelOptions, channelOptions)}
           />
           {showAddChannel && (
             <AddOptionForm
@@ -453,10 +507,11 @@ export default function AddCaseModal({ open, onClose, onCreated, defaultChannelN
 
           <SelectWithAdd
             label="Status"
-            options={statusOptions}
+            optionObjects={statusOptions}
             value={form.currentStatus}
             onChange={(e) => setForm((f) => ({ ...f, currentStatus: e.target.value }))}
             onAddClick={() => setShowAddStatus(true)}
+            onDeleteOption={(id, val) => handleDeleteDropdownOption(id, val, setStatusOptions, statusOptions)}
           />
           {showAddStatus && (
             <AddOptionForm
@@ -715,22 +770,62 @@ function Select({ label, options, hasEmpty, ...props }) {
   );
 }
 
-function SelectWithAdd({ label, options, onAddClick, ...props }) {
+function SelectWithAdd({ label, optionObjects = [], options = [], onAddClick, onDeleteOption, ...props }) {
+  // Normalize: support both legacy string `options` and new `optionObjects`
+  const normalizedOptions = optionObjects.length > 0
+    ? optionObjects
+    : options.map(o => (typeof o === 'object' ? o : { label: o, value: o, _id: null }));
+
+  const [open, setOpen] = useState(false);
+  const selectedLabel = normalizedOptions.find(o => o.value === props.value)?.label || props.value || '— Select —';
+
   return (
-    <label className="block">
+    <label className="block relative">
       <span className="text-xs font-medium text-slate-600">{label}</span>
       <div className="mt-0.5 flex gap-1">
-        <select
-          {...props}
-          className="flex-1 rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
-        >
-          <option value="">— Select —</option>
-          {options.map((o) => (
-            <option key={o} value={o}>
-              {o}
-            </option>
-          ))}
-        </select>
+        <div className="relative flex-1">
+          <button
+            type="button"
+            onClick={() => setOpen(v => !v)}
+            className="w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm text-left flex items-center justify-between focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+          >
+            <span className={props.value ? 'text-slate-800' : 'text-slate-400'}>{selectedLabel}</span>
+            <span className="text-[10px] text-slate-400 ml-1">▼</span>
+          </button>
+          {open && (
+            <div className="absolute z-50 left-0 top-full mt-1 w-full min-w-[180px] rounded-md border border-slate-200 bg-white shadow-lg max-h-52 overflow-y-auto">
+              <div
+                className="px-3 py-1.5 text-sm text-slate-400 hover:bg-slate-50 cursor-pointer"
+                onClick={() => { props.onChange?.({ target: { value: '' } }); setOpen(false); }}
+              >
+                — Select —
+              </div>
+              {normalizedOptions.map((o) => (
+                <div
+                  key={o.value}
+                  className={`group flex items-center justify-between px-3 py-1.5 text-sm cursor-pointer hover:bg-blue-50 ${props.value === o.value ? 'bg-blue-50 font-semibold text-brand' : 'text-slate-700'}`}
+                >
+                  <span
+                    className="flex-1 truncate"
+                    onClick={() => { props.onChange?.({ target: { value: o.value } }); setOpen(false); }}
+                  >
+                    {o.label}
+                  </span>
+                  {o._id && onDeleteOption && (
+                    <button
+                      type="button"
+                      className="ml-2 hidden group-hover:flex items-center justify-center w-5 h-5 rounded text-red-400 hover:bg-red-100 hover:text-red-600 text-xs flex-shrink-0"
+                      title={`Delete "${o.label}"`}
+                      onClick={(e) => { e.stopPropagation(); setOpen(false); onDeleteOption(o._id, o.value); }}
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
         <button
           type="button"
           onClick={onAddClick}
@@ -740,6 +835,8 @@ function SelectWithAdd({ label, options, onAddClick, ...props }) {
           + Add
         </button>
       </div>
+      {/* Close overlay */}
+      {open && <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />}
     </label>
   );
 }

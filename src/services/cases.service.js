@@ -52,5 +52,8 @@ export const casesService = {
   createDropdownOption(type, label, value, description = '') {
     return api.post('/cases/dropdowns/options', { type, label, value, description }).then((r) => r.data);
   },
+  deleteDropdownOption(optionId) {
+    return api.delete(`/cases/dropdowns/options/${optionId}`).then((r) => r.data);
+  },
 };
 
