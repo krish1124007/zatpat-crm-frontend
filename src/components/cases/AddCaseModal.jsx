@@ -780,7 +780,7 @@ function SelectWithAdd({ label, optionObjects = [], options = [], onAddClick, on
   const selectedLabel = normalizedOptions.find(o => o.value === props.value)?.label || props.value || '— Select —';
 
   return (
-    <label className="block relative">
+    <div className="block relative">
       <span className="text-xs font-medium text-slate-600">{label}</span>
       <div className="mt-0.5 flex gap-1">
         <div className="relative flex-1">
@@ -836,8 +836,8 @@ function SelectWithAdd({ label, optionObjects = [], options = [], onAddClick, on
         </button>
       </div>
       {/* Close overlay */}
-      {open && <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />}
-    </label>
+      {open && <div className="fixed inset-0 z-40" onClick={(e) => { e.stopPropagation(); setOpen(false); }} />}
+    </div>
   );
 }
 
