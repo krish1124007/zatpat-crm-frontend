@@ -181,32 +181,57 @@ export default function Dashboard() {
                 {(!todaysWork || todaysWork.items.length === 0) && (
                   <div className="text-sm text-slate-500">No pending follow-ups. All caught up! 🎉</div>
                 )}
-                <div className="max-h-80 space-y-1 overflow-y-auto">
-                  {todaysWork?.items.map((w) => (
-                    <Link
-                      key={w._id}
-                      to="/cases"
-                      className="flex items-center justify-between rounded-md border-b border-slate-100 py-1.5 px-1 text-sm last:border-0 hover:bg-slate-50"
-                    >
-                      <span className="flex min-w-0 items-center gap-2">
-                        <span className="text-xs font-mono text-slate-400">#{w.srNo}</span>
-                        <span className="truncate font-medium text-slate-800">{w.customerName}</span>
-                        {w.handledBy && <span className="hidden truncate text-xs text-indigo-600 sm:inline">{w.handledBy.name}</span>}
-                      </span>
-                      <span className="flex flex-shrink-0 items-center gap-2">
-                        <StatusPill status={w.currentStatus} />
-                        {w.daysOverdue === -1 ? (
-                          <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-700">Done Today</span>
-                        ) : w.daysOverdue === 0 ? (
-                          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">Today</span>
-                        ) : (
-                          <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700">
-                            Due since {w.daysOverdue} day{w.daysOverdue === 1 ? '' : 's'}
-                          </span>
+                <div className="max-h-80 overflow-y-auto">
+                  {(() => {
+                    const doneTodayItems = todaysWork?.items?.filter((w) => w.daysOverdue === -1) || [];
+                    const pendingItems = todaysWork?.items?.filter((w) => w.daysOverdue >= 0) || [];
+                    return (
+                      <>
+                        {pendingItems.length > 0 && (
+                          <div className="mb-3 space-y-1">
+                            <h4 className="px-1 text-xs font-semibold uppercase tracking-wider text-slate-500">Pending</h4>
+                            {pendingItems.map((w) => (
+                              <Link key={w._id} to="/cases" className="flex items-center justify-between rounded-md border-b border-slate-100 px-1 py-1.5 text-sm hover:bg-slate-50 last:border-0">
+                                <span className="flex min-w-0 items-center gap-2">
+                                  <span className="text-xs font-mono text-slate-400">#{w.srNo}</span>
+                                  <span className="truncate font-medium text-slate-800">{w.customerName}</span>
+                                  {w.handledBy && <span className="hidden truncate text-xs text-indigo-600 sm:inline">{w.handledBy.name}</span>}
+                                </span>
+                                <span className="flex flex-shrink-0 items-center gap-2">
+                                  <StatusPill status={w.currentStatus} />
+                                  {w.daysOverdue === 0 ? (
+                                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">Today</span>
+                                  ) : (
+                                    <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700">
+                                      Due since {w.daysOverdue} day{w.daysOverdue === 1 ? '' : 's'}
+                                    </span>
+                                  )}
+                                </span>
+                              </Link>
+                            ))}
+                          </div>
                         )}
-                      </span>
-                    </Link>
-                  ))}
+                        {doneTodayItems.length > 0 && (
+                          <div className="space-y-1">
+                            <h4 className="px-1 text-xs font-semibold uppercase tracking-wider text-slate-500 border-t border-slate-100 pt-2">Done Today</h4>
+                            {doneTodayItems.map((w) => (
+                              <Link key={w._id} to="/cases" className="flex items-center justify-between rounded-md border-b border-slate-100 px-1 py-1.5 text-sm hover:bg-slate-50 opacity-75 transition hover:opacity-100 last:border-0">
+                                <span className="flex min-w-0 items-center gap-2">
+                                  <span className="text-xs font-mono text-slate-400">#{w.srNo}</span>
+                                  <span className="truncate font-medium text-slate-500">{w.customerName}</span>
+                                  {w.handledBy && <span className="hidden truncate text-xs text-indigo-600 sm:inline">{w.handledBy.name}</span>}
+                                </span>
+                                <span className="flex flex-shrink-0 items-center gap-2">
+                                  <StatusPill status={w.currentStatus} />
+                                  <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-700">Done Today</span>
+                                </span>
+                              </Link>
+                            ))}
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
                 </div>
               </Panel>
 
