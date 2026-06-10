@@ -195,7 +195,9 @@ export default function Dashboard() {
                       </span>
                       <span className="flex flex-shrink-0 items-center gap-2">
                         <StatusPill status={w.currentStatus} />
-                        {w.daysOverdue === 0 ? (
+                        {w.daysOverdue === -1 ? (
+                          <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-bold text-blue-700">Done Today</span>
+                        ) : w.daysOverdue === 0 ? (
                           <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">Today</span>
                         ) : (
                           <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700">

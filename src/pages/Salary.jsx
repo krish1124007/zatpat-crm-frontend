@@ -108,8 +108,20 @@ export default function SalaryPage() {
               ⬇ {r.reportFileName || 'Download'}
             </a>
           )}
-          <label className="cursor-pointer text-xs text-slate-500 hover:text-brand">
-            {uploadingId === r._id ? 'Uploading…' : r.reportFile ? 'Replace' : 'Upload'}
+          {r.documents && r.documents.map((doc, idx) => (
+            <a
+              key={idx}
+              href={`${API_ORIGIN}${doc.fileUrl}`}
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs font-medium text-brand hover:underline"
+              title={doc.fileName}
+            >
+              ⬇ {doc.fileName || 'Download'}
+            </a>
+          ))}
+          <label className="cursor-pointer text-xs text-slate-500 hover:text-brand mt-1 inline-block">
+            {uploadingId === r._id ? 'Uploading…' : '+ Add File'}
             <input
               type="file"
               accept=".pdf,.doc,.docx,.xls,.xlsx,.csv"
@@ -117,9 +129,6 @@ export default function SalaryPage() {
               onChange={(e) => handleUploadReport(r, e.target.files?.[0])}
             />
           </label>
-          {r.reportUploadedAt && (
-            <span className="text-[10px] text-slate-400">Last updated: {formatDateTime(r.reportUploadedAt)}</span>
-          )}
         </div>
       ),
     },

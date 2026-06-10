@@ -14,6 +14,7 @@ export default function AddCaseModal({ open, onClose, onCreated, defaultChannelN
         profession: editData.profession || 'Salaried',
         product: editData.product || 'HL',
         loanAmount: editData.loanAmount ? (editData.loanAmount / 100).toString() : '',
+        loanAmountDisplay: editData.loanAmountDisplay || '',
         cibilIssue: editData.cibilIssue || '',
         cibilRemark: editData.cibilRemark || '',
         profileDetails: {
@@ -91,6 +92,7 @@ export default function AddCaseModal({ open, onClose, onCreated, defaultChannelN
       profession: 'Salaried',
       product: 'HL',
       loanAmount: '',
+      loanAmountDisplay: '',
       cibilIssue: '',
       cibilRemark: '',
       profileDetails: { companyName: '', grossSalary: '', netSalary: '', itr: '', turnover: '' },
@@ -400,6 +402,7 @@ export default function AddCaseModal({ open, onClose, onCreated, defaultChannelN
       const payload = {
         ...form,
         loanAmount: form.loanAmount ? rupeesToPaisa(parseFloat(form.loanAmount)) : 0,
+        loanAmountDisplay: form.loanAmountDisplay || '',
         provisionalBanks: form.provisionalBanks
           ? form.provisionalBanks.split(',').map((s) => s.trim()).filter(Boolean)
           : [],
@@ -531,6 +534,7 @@ export default function AddCaseModal({ open, onClose, onCreated, defaultChannelN
           )}
 
           <Input label="Loan Amount (₹)" type="number" min="0" {...field('loanAmount')} />
+          <Input label="Loan Amount (Text Display)" type="text" {...field('loanAmountDisplay')} placeholder="e.g. 10 Lakhs" />
 
           {/* Construction Stage — new field */}
           <label className="block">

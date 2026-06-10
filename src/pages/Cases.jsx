@@ -166,12 +166,6 @@ export default function CasesPage() {
             🖨 Print
           </button>
           <button
-            onClick={() => setAddOpen('lead')}
-            className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
-          >
-            + New Lead
-          </button>
-          <button
             onClick={() => setAddOpen(true)}
             className="rounded-md bg-brand px-3 py-1.5 text-xs font-semibold text-white hover:bg-brand-700"
           >
@@ -261,7 +255,6 @@ export default function CasesPage() {
 
       <AddCaseModal
         open={!!addOpen}
-        isLead={addOpen === 'lead'}
         onClose={() => setAddOpen(false)}
         onCreated={handleCreated}
         defaultChannelName={activeTab !== 'All' ? activeTab : 'Zatpat'}

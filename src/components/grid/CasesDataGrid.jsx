@@ -181,6 +181,7 @@ export default function CasesDataGrid({ rows, loading, onRowClick, onCellEdit, o
       dateCol('followDate', 'Follow Date'),
       dateCol('loginDate', 'Login Date'),
       currencyCol('loanAmount', 'Loan Amount', { width: 135 }),
+      { field: 'loanAmountDisplay', headerName: 'Loan Amt (Text)', editable: true, width: 135 },
       {
         field: 'cibilIssue',
         headerName: 'CIBIL Issue',
