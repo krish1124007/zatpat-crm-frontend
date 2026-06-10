@@ -4,6 +4,7 @@ import CasesDataGrid from '../components/grid/CasesDataGrid.jsx';
 import CaseDrawer from '../components/cases/CaseDrawer.jsx';
 import AddCaseModal from '../components/cases/AddCaseModal.jsx';
 import { casesService } from '../services/cases.service.js';
+import { salaryService } from '../services/finance.service.js';
 import { CASE_TABS, LOAN_STATUSES, PROFESSIONS, PRODUCTS, LOAN_TYPES } from '../utils/constants.js';
 import { exportCasesCSV } from '../utils/csv.js';
 
@@ -19,9 +20,8 @@ export default function CasesPage() {
     searchParams.get('status') ? searchParams.get('status').split(',') : []
   );
   const [pendingOnly, setPendingOnly] = useState(searchParams.get('pendingPayment') === 'true');
-  const [handlerFilter, setHandlerFilter] = useState(searchParams.get('handledBy') || '');
-  const [professionFilter, setProfessionFilter] = useState(
-    searchParams.get('profession') ? searchParams.get('profession').split(',') : []
+  const [handlerFilter, setHandlerFilter] = useState(
+    searchParams.get('handledBy') ? searchParams.get('handledBy').split(',') : []
   );
   const [bankFilter, setBankFilter] = useState(
     searchParams.get('bankName') ? searchParams.get('bankName').split(',') : []
@@ -35,6 +35,8 @@ export default function CasesPage() {
   const [error, setError] = useState(null);
   const [total, setTotal] = useState(0);
 
+  const [employees, setEmployees] = useState([]);
+
   useEffect(() => {
     casesService.facets().then((f) => setFacets({
       bankNames: f.bankNames || [],
@@ -42,6 +44,8 @@ export default function CasesPage() {
       products: f.products || PRODUCTS,
       loanTypes: f.loanTypes || LOAN_TYPES,
     })).catch(() => {});
+
+    salaryService.employees().then((r) => setEmployees(r.items || [])).catch(() => {});
   }, []);
 
   const fetchRows = useCallback(async () => {
@@ -51,12 +55,11 @@ export default function CasesPage() {
       const params = {};
       if (activeTab !== 'All') params.channelName = activeTab;
       if (statusFilter.length > 0) params.status = statusFilter.join(',');
-      if (professionFilter.length > 0) params.profession = professionFilter.join(',');
       if (bankFilter.length > 0) params.bankName = bankFilter.join(',');
       if (productFilter.length > 0) params.product = productFilter.join(',');
       if (loanTypeFilter.length > 0) params.loanType = loanTypeFilter.join(',');
       if (pendingOnly) params.pendingPayment = 'true';
-      if (handlerFilter) params.handledBy = handlerFilter;
+      if (handlerFilter.length > 0) params.handledBy = handlerFilter.join(',');
       const r = await casesService.list(params);
       setRows(r.items);
       setTotal(r.total);
@@ -65,17 +68,17 @@ export default function CasesPage() {
     } finally {
       setLoading(false);
     }
-  }, [activeTab, statusFilter, professionFilter, bankFilter, productFilter, loanTypeFilter, pendingOnly, handlerFilter]);
+  }, [activeTab, statusFilter, bankFilter, productFilter, loanTypeFilter, pendingOnly, handlerFilter]);
 
   useEffect(() => {
     fetchRows();
   }, [fetchRows]);
 
   const activeFilterCount =
-    statusFilter.length + professionFilter.length + bankFilter.length + productFilter.length + loanTypeFilter.length;
+    statusFilter.length + handlerFilter.length + bankFilter.length + productFilter.length + loanTypeFilter.length;
   function clearAllFilters() {
     setStatusFilter([]);
-    setProfessionFilter([]);
+    setHandlerFilter([]);
     setBankFilter([]);
     setProductFilter([]);
     setLoanTypeFilter([]);
@@ -124,7 +127,12 @@ export default function CasesPage() {
           className="w-72 rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
         />
         <MultiSelectFilter label="Status" options={LOAN_STATUSES} selected={statusFilter} onChange={setStatusFilter} />
-        <MultiSelectFilter label="Profession" options={facets.professions} selected={professionFilter} onChange={setProfessionFilter} />
+        <MultiSelectFilter 
+          label="Handled By" 
+          options={employees.map(e => ({ value: e._id, label: e.name }))} 
+          selected={handlerFilter} 
+          onChange={setHandlerFilter} 
+        />
         <MultiSelectFilter label="Bank" options={facets.bankNames} selected={bankFilter} onChange={setBankFilter} />
         <MultiSelectFilter label="Product" options={facets.products} selected={productFilter} onChange={setProductFilter} />
         <MultiSelectFilter label="Loan Type" options={facets.loanTypes} selected={loanTypeFilter} onChange={setLoanTypeFilter} />
@@ -285,19 +293,23 @@ function MultiSelectFilter({ label, options = [], selected, onChange }) {
           <div className="absolute left-0 top-full z-50 mt-1 w-60 rounded-md border border-slate-200 bg-white p-2 shadow-lg">
             <div className="max-h-60 overflow-y-auto">
               {list.length === 0 && <div className="px-2 py-1.5 text-xs text-slate-400">No options available</div>}
-              {list.map((o) => (
-                <label key={o} className="flex cursor-pointer items-center gap-2 px-2 py-1.5 text-sm hover:bg-slate-50">
-                  <input
-                    type="checkbox"
-                    checked={selected.includes(o)}
-                    onChange={(e) => {
-                      if (e.target.checked) onChange([...selected, o]);
-                      else onChange(selected.filter((x) => x !== o));
-                    }}
-                  />
-                  <span className="truncate">{o}</span>
-                </label>
-              ))}
+              {list.map((o) => {
+                const val = typeof o === 'string' ? o : o.value;
+                const lab = typeof o === 'string' ? o : o.label;
+                return (
+                  <label key={val} className="flex cursor-pointer items-center gap-2 px-2 py-1.5 text-sm hover:bg-slate-50">
+                    <input
+                      type="checkbox"
+                      checked={selected.includes(val)}
+                      onChange={(e) => {
+                        if (e.target.checked) onChange([...selected, val]);
+                        else onChange(selected.filter((x) => x !== val));
+                      }}
+                    />
+                    <span className="truncate">{lab}</span>
+                  </label>
+                );
+              })}
             </div>
             {selected.length > 0 && (
               <button
