@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { dashboardService, followupsService } from '../services/dashboard.service.js';
 import { BarChart, DonutChart, Sparkline } from '../components/charts/Charts.jsx';
-import { formatINR, formatDate } from '../utils/format.js';
+import { formatINR, formatDate, formatDateTime } from '../utils/format.js';
 import { STATUS_COLORS, LOAN_STATUSES } from '../utils/constants.js';
 import { useAuth } from '../store/auth.js';
 
@@ -19,6 +19,9 @@ export default function Dashboard() {
   const [products, setProducts] = useState([]);
   const [pipeline, setPipeline] = useState(null);
   const [distributions, setDistributions] = useState(null);
+  const [conversion, setConversion] = useState(null);
+  const [todaysWork, setTodaysWork] = useState(null);
+  const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedHandler, setSelectedHandler] = useState(null);
@@ -55,8 +58,11 @@ export default function Dashboard() {
       dashboardService.productBreakdown(),
       dashboardService.pipelineSummary(),
       dashboardService.allDistributions(),
+      dashboardService.conversionRatios(),
+      dashboardService.todaysWork(),
+      dashboardService.activities(30),
     ])
-      .then(([k, b, t, bk, rc, fi, ch, hp, pb, ps, dist]) => {
+      .then(([k, b, t, bk, rc, fi, ch, hp, pb, ps, dist, conv, tw, act]) => {
         if (cancelled) return;
         setKpis(k);
         setBreakdown(b);
@@ -69,6 +75,9 @@ export default function Dashboard() {
         setProducts(pb.items);
         setPipeline(ps);
         setDistributions(dist);
+        setConversion(conv);
+        setTodaysWork(tw);
+        setActivities(act.items || []);
       })
       .catch((e) => setError(e.response?.data?.error || 'Failed to load dashboard'))
       .finally(() => !cancelled && setLoading(false));
@@ -131,6 +140,91 @@ export default function Dashboard() {
               <FinanceCard label="Month Commission" value={formatINR(kpis.monthCommissionPaid)} color="text-emerald-700" bg="bg-emerald-50" />
               <FinanceCard label="Month Expenses" value={formatINR(kpis.monthExpenses)} sub={`${kpis.monthExpenseCount} entries`} color="text-red-700" bg="bg-red-50" />
               <FinanceCard label="Month Net Income" value={formatINR(kpis.monthNetIncome)} color={kpis.monthNetIncome >= 0 ? 'text-emerald-700' : 'text-red-700'} bg={kpis.monthNetIncome >= 0 ? 'bg-emerald-50' : 'bg-red-50'} />
+            </div>
+
+            {/* ── Conversion Ratios ── */}
+            {conversion && (
+              <Panel title="Conversion Ratios" className="mb-4">
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                  <RatioCard
+                    label="Login → Sanction (This Month)"
+                    pct={conversion.monthly.loginToSanction}
+                    sub={`${conversion.monthly.sanction} of ${conversion.monthly.login} logins`}
+                    color="text-blue-700"
+                  />
+                  <RatioCard
+                    label="Sanction → Disburse (This Month)"
+                    pct={conversion.monthly.sanctionToDisburse}
+                    sub={`${conversion.monthly.disburse} of ${conversion.monthly.sanction} sanctions`}
+                    color="text-emerald-700"
+                  />
+                  <RatioCard
+                    label="Login → Sanction (All Time)"
+                    pct={conversion.allTime.loginToSanction}
+                    sub={`${conversion.allTime.sanction} of ${conversion.allTime.login} logins`}
+                    color="text-blue-600"
+                  />
+                  <RatioCard
+                    label="Sanction → Disburse (All Time)"
+                    pct={conversion.allTime.sanctionToDisburse}
+                    sub={`${conversion.allTime.disburse} of ${conversion.allTime.sanction} sanctions`}
+                    color="text-emerald-600"
+                  />
+                </div>
+              </Panel>
+            )}
+
+            {/* ── Today's Work + Live Updates ── */}
+            <div className="mb-4 grid gap-4 lg:grid-cols-2">
+              {/* Today's Work */}
+              <Panel title={`Today's Work${todaysWork ? ` (${todaysWork.todayCount} due · ${todaysWork.overdueCount} overdue)` : ''}`}>
+                {(!todaysWork || todaysWork.items.length === 0) && (
+                  <div className="text-sm text-slate-500">No pending follow-ups. All caught up! 🎉</div>
+                )}
+                <div className="max-h-80 space-y-1 overflow-y-auto">
+                  {todaysWork?.items.map((w) => (
+                    <Link
+                      key={w._id}
+                      to="/cases"
+                      className="flex items-center justify-between rounded-md border-b border-slate-100 py-1.5 px-1 text-sm last:border-0 hover:bg-slate-50"
+                    >
+                      <span className="flex min-w-0 items-center gap-2">
+                        <span className="text-xs font-mono text-slate-400">#{w.srNo}</span>
+                        <span className="truncate font-medium text-slate-800">{w.customerName}</span>
+                        {w.handledBy && <span className="hidden truncate text-xs text-indigo-600 sm:inline">{w.handledBy.name}</span>}
+                      </span>
+                      <span className="flex flex-shrink-0 items-center gap-2">
+                        <StatusPill status={w.currentStatus} />
+                        {w.daysOverdue === 0 ? (
+                          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700">Today</span>
+                        ) : (
+                          <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700">
+                            Due since {w.daysOverdue} day{w.daysOverdue === 1 ? '' : 's'}
+                          </span>
+                        )}
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              </Panel>
+
+              {/* Live Updates */}
+              <Panel title="Live Updates">
+                {activities.length === 0 && <div className="text-sm text-slate-500">No recent activity.</div>}
+                <div className="max-h-80 space-y-2 overflow-y-auto">
+                  {activities.map((a) => (
+                    <div key={a._id} className="flex items-start gap-2 border-b border-slate-100 pb-2 text-sm last:border-0">
+                      <span className={`mt-0.5 h-2 w-2 flex-shrink-0 rounded-full ${ACTIVITY_DOT[a.action] || 'bg-slate-400'}`} />
+                      <div className="min-w-0">
+                        <div className="text-slate-700">
+                          <span className="font-semibold text-slate-900">{a.userName}</span> {a.message}
+                        </div>
+                        <div className="text-[11px] text-slate-400">{formatDateTime(a.createdAt)}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Panel>
             </div>
 
             {/* ── Pipeline Funnel ── */}
@@ -512,6 +606,24 @@ function DistributionPanel({ title, data, onRowClick }) {
         ))}
       </div>
     </Panel>
+  );
+}
+
+const ACTIVITY_DOT = {
+  create: 'bg-emerald-500',
+  status_change: 'bg-blue-500',
+  followup: 'bg-amber-500',
+  payment: 'bg-purple-500',
+  update: 'bg-slate-400',
+};
+
+function RatioCard({ label, pct, sub, color }) {
+  return (
+    <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+      <div className="text-xs uppercase tracking-wide text-slate-500">{label}</div>
+      <div className={`mt-1 text-2xl font-bold ${color || 'text-slate-800'}`}>{pct}%</div>
+      {sub && <div className="mt-0.5 text-xs text-slate-500">{sub}</div>}
+    </div>
   );
 }
 

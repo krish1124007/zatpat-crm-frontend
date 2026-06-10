@@ -4,7 +4,7 @@ import CasesDataGrid from '../components/grid/CasesDataGrid.jsx';
 import CaseDrawer from '../components/cases/CaseDrawer.jsx';
 import AddCaseModal from '../components/cases/AddCaseModal.jsx';
 import { casesService } from '../services/cases.service.js';
-import { CASE_TABS, LOAN_STATUSES } from '../utils/constants.js';
+import { CASE_TABS, LOAN_STATUSES, PROFESSIONS, PRODUCTS, LOAN_TYPES } from '../utils/constants.js';
 import { exportCasesCSV } from '../utils/csv.js';
 
 export default function CasesPage() {
@@ -20,11 +20,29 @@ export default function CasesPage() {
   );
   const [pendingOnly, setPendingOnly] = useState(searchParams.get('pendingPayment') === 'true');
   const [handlerFilter, setHandlerFilter] = useState(searchParams.get('handledBy') || '');
+  const [professionFilter, setProfessionFilter] = useState(
+    searchParams.get('profession') ? searchParams.get('profession').split(',') : []
+  );
+  const [bankFilter, setBankFilter] = useState(
+    searchParams.get('bankName') ? searchParams.get('bankName').split(',') : []
+  );
+  const [productFilter, setProductFilter] = useState([]);
+  const [loanTypeFilter, setLoanTypeFilter] = useState([]);
+  const [facets, setFacets] = useState({ bankNames: [], professions: PROFESSIONS, products: PRODUCTS, loanTypes: LOAN_TYPES });
   const [selectedId, setSelectedId] = useState(null);
   const [addOpen, setAddOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(null);
   const [error, setError] = useState(null);
   const [total, setTotal] = useState(0);
+
+  useEffect(() => {
+    casesService.facets().then((f) => setFacets({
+      bankNames: f.bankNames || [],
+      professions: f.professions || PROFESSIONS,
+      products: f.products || PRODUCTS,
+      loanTypes: f.loanTypes || LOAN_TYPES,
+    })).catch(() => {});
+  }, []);
 
   const fetchRows = useCallback(async () => {
     setLoading(true);
@@ -33,6 +51,10 @@ export default function CasesPage() {
       const params = {};
       if (activeTab !== 'All') params.channelName = activeTab;
       if (statusFilter.length > 0) params.status = statusFilter.join(',');
+      if (professionFilter.length > 0) params.profession = professionFilter.join(',');
+      if (bankFilter.length > 0) params.bankName = bankFilter.join(',');
+      if (productFilter.length > 0) params.product = productFilter.join(',');
+      if (loanTypeFilter.length > 0) params.loanType = loanTypeFilter.join(',');
       if (pendingOnly) params.pendingPayment = 'true';
       if (handlerFilter) params.handledBy = handlerFilter;
       const r = await casesService.list(params);
@@ -43,11 +65,21 @@ export default function CasesPage() {
     } finally {
       setLoading(false);
     }
-  }, [activeTab, statusFilter, pendingOnly, handlerFilter]);
+  }, [activeTab, statusFilter, professionFilter, bankFilter, productFilter, loanTypeFilter, pendingOnly, handlerFilter]);
 
   useEffect(() => {
     fetchRows();
   }, [fetchRows]);
+
+  const activeFilterCount =
+    statusFilter.length + professionFilter.length + bankFilter.length + productFilter.length + loanTypeFilter.length;
+  function clearAllFilters() {
+    setStatusFilter([]);
+    setProfessionFilter([]);
+    setBankFilter([]);
+    setProductFilter([]);
+    setLoanTypeFilter([]);
+  }
 
   // Inline edit handler — fires per cell change. Optimistic; rolls back on failure.
   const editTimers = useRef(new Map());
@@ -91,37 +123,16 @@ export default function CasesPage() {
           onChange={(e) => setSearch(e.target.value)}
           className="w-72 rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
         />
-        <div className="relative group">
-          <button className="flex items-center gap-2 rounded-md border border-slate-300 bg-white px-3 py-1.5 text-sm hover:bg-slate-50">
-            <span>{statusFilter.length === 0 ? 'All statuses' : `${statusFilter.length} statuses`}</span>
-            <span className="text-[10px]">▼</span>
+        <MultiSelectFilter label="Status" options={LOAN_STATUSES} selected={statusFilter} onChange={setStatusFilter} />
+        <MultiSelectFilter label="Profession" options={facets.professions} selected={professionFilter} onChange={setProfessionFilter} />
+        <MultiSelectFilter label="Bank" options={facets.bankNames} selected={bankFilter} onChange={setBankFilter} />
+        <MultiSelectFilter label="Product" options={facets.products} selected={productFilter} onChange={setProductFilter} />
+        <MultiSelectFilter label="Loan Type" options={facets.loanTypes} selected={loanTypeFilter} onChange={setLoanTypeFilter} />
+        {activeFilterCount > 0 && (
+          <button onClick={clearAllFilters} className="text-xs font-bold text-red-600 hover:underline">
+            Clear ({activeFilterCount})
           </button>
-          <div className="absolute left-0 top-full z-50 mt-1 hidden w-60 rounded-md border border-slate-200 bg-white p-2 shadow-lg group-focus-within:block hover:block">
-            <div className="max-h-60 overflow-y-auto">
-              {LOAN_STATUSES.map((s) => (
-                <label key={s} className="flex items-center gap-2 px-2 py-1.5 hover:bg-slate-50 cursor-pointer text-sm">
-                  <input
-                    type="checkbox"
-                    checked={statusFilter.includes(s)}
-                    onChange={(e) => {
-                      if (e.target.checked) setStatusFilter([...statusFilter, s]);
-                      else setStatusFilter(statusFilter.filter((x) => x !== s));
-                    }}
-                  />
-                  {s}
-                </label>
-              ))}
-            </div>
-            {statusFilter.length > 0 && (
-              <button 
-                onClick={() => setStatusFilter([])}
-                className="mt-2 w-full border-t border-slate-100 pt-2 text-xs font-bold text-red-600 hover:underline text-left px-2"
-              >
-                Clear all
-              </button>
-            )}
-          </div>
-        </div>
+        )}
         <label className="flex items-center gap-1 text-sm text-slate-600">
           <input
             type="checkbox"
@@ -153,6 +164,12 @@ export default function CasesPage() {
             className="rounded-md border border-slate-300 px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50"
           >
             🖨 Print
+          </button>
+          <button
+            onClick={() => setAddOpen('lead')}
+            className="rounded-md bg-emerald-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-emerald-700"
+          >
+            + New Lead
           </button>
           <button
             onClick={() => setAddOpen(true)}
@@ -243,11 +260,63 @@ export default function CasesPage() {
       )}
 
       <AddCaseModal
-        open={addOpen}
+        open={!!addOpen}
+        isLead={addOpen === 'lead'}
         onClose={() => setAddOpen(false)}
         onCreated={handleCreated}
         defaultChannelName={activeTab !== 'All' ? activeTab : 'Zatpat'}
       />
+    </div>
+  );
+}
+
+// Reusable multi-select dropdown filter. Shows a checklist of available options.
+function MultiSelectFilter({ label, options = [], selected, onChange }) {
+  const [open, setOpen] = useState(false);
+  const list = (options || []).filter(Boolean);
+  return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={`flex items-center gap-1.5 rounded-md border px-3 py-1.5 text-sm hover:bg-slate-50 ${
+          selected.length > 0 ? 'border-brand bg-brand/5 text-brand' : 'border-slate-300 bg-white text-slate-700'
+        }`}
+      >
+        <span>{selected.length === 0 ? label : `${label}: ${selected.length}`}</span>
+        <span className="text-[10px]">▼</span>
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute left-0 top-full z-50 mt-1 w-60 rounded-md border border-slate-200 bg-white p-2 shadow-lg">
+            <div className="max-h-60 overflow-y-auto">
+              {list.length === 0 && <div className="px-2 py-1.5 text-xs text-slate-400">No options available</div>}
+              {list.map((o) => (
+                <label key={o} className="flex cursor-pointer items-center gap-2 px-2 py-1.5 text-sm hover:bg-slate-50">
+                  <input
+                    type="checkbox"
+                    checked={selected.includes(o)}
+                    onChange={(e) => {
+                      if (e.target.checked) onChange([...selected, o]);
+                      else onChange(selected.filter((x) => x !== o));
+                    }}
+                  />
+                  <span className="truncate">{o}</span>
+                </label>
+              ))}
+            </div>
+            {selected.length > 0 && (
+              <button
+                onClick={() => onChange([])}
+                className="mt-2 w-full border-t border-slate-100 px-2 pt-2 text-left text-xs font-bold text-red-600 hover:underline"
+              >
+                Clear {label}
+              </button>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }

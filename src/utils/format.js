@@ -41,6 +41,52 @@ export function formatDateTime(value) {
   });
 }
 
+// ── Indian number-to-words (for loan amounts) ──
+const ONES = [
+  '', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten',
+  'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen',
+  'Eighteen', 'Nineteen',
+];
+const TENS = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
+
+function twoDigitsToWords(n) {
+  if (n < 20) return ONES[n];
+  const t = Math.floor(n / 10);
+  const o = n % 10;
+  return TENS[t] + (o ? ' ' + ONES[o] : '');
+}
+
+// Convert an integer rupee amount to Indian-system words (Crore/Lakh/Thousand).
+export function rupeesToWords(rupees) {
+  let n = Math.floor(Number(rupees) || 0);
+  if (n === 0) return 'Zero Rupees';
+  if (n < 0) return 'Minus ' + rupeesToWords(-n);
+
+  const parts = [];
+  const crore = Math.floor(n / 10000000);
+  n %= 10000000;
+  const lakh = Math.floor(n / 100000);
+  n %= 100000;
+  const thousand = Math.floor(n / 1000);
+  n %= 1000;
+  const hundred = Math.floor(n / 100);
+  const rest = n % 100;
+
+  if (crore) parts.push(twoDigitsToWords(crore) + ' Crore');
+  if (lakh) parts.push(twoDigitsToWords(lakh) + ' Lakh');
+  if (thousand) parts.push(twoDigitsToWords(thousand) + ' Thousand');
+  if (hundred) parts.push(ONES[hundred] + ' Hundred');
+  if (rest) parts.push(twoDigitsToWords(rest));
+
+  return parts.join(' ').trim() + ' Rupees';
+}
+
+// Convenience: take a paisa integer and return the amount in words.
+export function paisaToWords(paisa) {
+  if (paisa == null || paisa === '') return '';
+  return rupeesToWords(paisaToRupees(paisa));
+}
+
 // Convert a Date to "YYYY-MM-DD" for <input type="date">.
 export function toDateInput(value) {
   if (!value) return '';

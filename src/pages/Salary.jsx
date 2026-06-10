@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import SimpleTable from '../components/common/SimpleTable.jsx';
 import { salaryService } from '../services/finance.service.js';
-import { formatINR, paisaToRupees, rupeesToPaisa } from '../utils/format.js';
+import { formatINR, paisaToRupees, rupeesToPaisa, formatDateTime } from '../utils/format.js';
+
+const API_ORIGIN = (import.meta.env.VITE_API_URL || '').replace(/\/api\/v1\/?$/, '');
 
 const MONTHS = [
   'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
@@ -45,6 +47,20 @@ export default function SalaryPage() {
     fetchRows();
   }
 
+  const [uploadingId, setUploadingId] = useState(null);
+  async function handleUploadReport(r, file) {
+    if (!file) return;
+    setUploadingId(r._id);
+    try {
+      await salaryService.uploadReport(r._id, file);
+      await fetchRows();
+    } catch (e) {
+      setError(e.response?.data?.error || 'Failed to upload report');
+    } finally {
+      setUploadingId(null);
+    }
+  }
+
   const totalNet = rows.reduce((a, r) => a + (r.netPay || 0), 0);
   const totalIncentives = rows.reduce((a, r) => a + (r.incentiveAmount || 0), 0);
 
@@ -75,6 +91,37 @@ export default function SalaryPage() {
       label: 'Net Pay',
       cellClass: 'text-right tabular-nums font-bold',
       render: (r) => formatINR(r.netPay),
+    },
+    {
+      key: 'report',
+      label: 'Report (Excel/Word/PDF)',
+      render: (r) => (
+        <div className="flex flex-col gap-0.5">
+          {r.reportFile && (
+            <a
+              href={`${API_ORIGIN}${r.reportFile}`}
+              target="_blank"
+              rel="noreferrer"
+              className="text-xs font-medium text-brand hover:underline"
+              title={r.reportFileName}
+            >
+              ⬇ {r.reportFileName || 'Download'}
+            </a>
+          )}
+          <label className="cursor-pointer text-xs text-slate-500 hover:text-brand">
+            {uploadingId === r._id ? 'Uploading…' : r.reportFile ? 'Replace' : 'Upload'}
+            <input
+              type="file"
+              accept=".pdf,.doc,.docx,.xls,.xlsx,.csv"
+              className="hidden"
+              onChange={(e) => handleUploadReport(r, e.target.files?.[0])}
+            />
+          </label>
+          {r.reportUploadedAt && (
+            <span className="text-[10px] text-slate-400">Last updated: {formatDateTime(r.reportUploadedAt)}</span>
+          )}
+        </div>
+      ),
     },
     {
       key: 'actions',

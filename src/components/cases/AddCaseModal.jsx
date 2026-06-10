@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
 import { casesService } from '../../services/cases.service.js';
-import { CHANNEL_NAMES, PRODUCTS, PROFESSIONS, LOAN_STATUSES, PROPERTY_TYPES } from '../../utils/constants.js';
-import { rupeesToPaisa } from '../../utils/format.js';
+import { CHANNEL_NAMES, PRODUCTS, PROFESSIONS, LOAN_STATUSES, PROPERTY_TYPES, LOAN_TYPES } from '../../utils/constants.js';
+import { rupeesToPaisa, rupeesToWords } from '../../utils/format.js';
 import { salaryService } from '../../services/finance.service.js';
 
-export default function AddCaseModal({ open, onClose, onCreated, defaultChannelName = 'Zatpat', editData = null, onUpdated }) {
+export default function AddCaseModal({ open, onClose, onCreated, defaultChannelName = 'Zatpat', editData = null, onUpdated, isLead = false }) {
   const [form, setForm] = useState(() => {
     if (editData) {
       return {
@@ -15,6 +15,22 @@ export default function AddCaseModal({ open, onClose, onCreated, defaultChannelN
         product: editData.product || 'HL',
         loanAmount: editData.loanAmount ? (editData.loanAmount / 100).toString() : '',
         cibilIssue: editData.cibilIssue || '',
+        cibilRemark: editData.cibilRemark || '',
+        profileDetails: {
+          companyName: editData.profileDetails?.companyName || '',
+          grossSalary: editData.profileDetails?.grossSalary ? (editData.profileDetails.grossSalary / 100).toString() : '',
+          netSalary: editData.profileDetails?.netSalary ? (editData.profileDetails.netSalary / 100).toString() : '',
+          itr: editData.profileDetails?.itr ? (editData.profileDetails.itr / 100).toString() : '',
+          turnover: editData.profileDetails?.turnover ? (editData.profileDetails.turnover / 100).toString() : '',
+        },
+        obligation: editData.obligation ? (editData.obligation / 100).toString() : '',
+        propertyDetails: {
+          marketValue: editData.propertyDetails?.marketValue ? (editData.propertyDetails.marketValue / 100).toString() : '',
+          saleDeedValue: editData.propertyDetails?.saleDeedValue ? (editData.propertyDetails.saleDeedValue / 100).toString() : '',
+        },
+        loanRequiredAmount: editData.loanRequiredAmount ? (editData.loanRequiredAmount / 100).toString() : '',
+        loanType: editData.loanType || '',
+        specialRemark: editData.specialRemark || '',
         bankName: editData.bankName || '',
         channelName: editData.channelName || defaultChannelName,
         currentStatus: editData.currentStatus || 'Query',
@@ -76,6 +92,13 @@ export default function AddCaseModal({ open, onClose, onCreated, defaultChannelN
       product: 'HL',
       loanAmount: '',
       cibilIssue: '',
+      cibilRemark: '',
+      profileDetails: { companyName: '', grossSalary: '', netSalary: '', itr: '', turnover: '' },
+      obligation: '',
+      propertyDetails: { marketValue: '', saleDeedValue: '' },
+      loanRequiredAmount: '',
+      loanType: '',
+      specialRemark: '',
       bankName: '',
       channelName: defaultChannelName,
       currentStatus: 'Query',
@@ -135,18 +158,24 @@ export default function AddCaseModal({ open, onClose, onCreated, defaultChannelN
   const [productOptions, setProductOptions] = useState(PRODUCTS);
   const [propertyTypeOptions, setPropertyTypeOptions] = useState(PROPERTY_TYPES);
   const [statusOptions, setStatusOptions] = useState(LOAN_STATUSES);
+  const [professionOptions, setProfessionOptions] = useState(PROFESSIONS);
+  const [loanTypeOptions, setLoanTypeOptions] = useState(LOAN_TYPES);
 
   const [showAddChannel, setShowAddChannel] = useState(false);
   const [showAddBank, setShowAddBank] = useState(false);
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [showAddPropertyType, setShowAddPropertyType] = useState(false);
   const [showAddStatus, setShowAddStatus] = useState(false);
+  const [showAddProfession, setShowAddProfession] = useState(false);
+  const [showAddLoanType, setShowAddLoanType] = useState(false);
 
   const [newChannelName, setNewChannelName] = useState('');
   const [newBankName, setNewBankName] = useState('');
   const [newProductName, setNewProductName] = useState('');
   const [newPropertyTypeName, setNewPropertyTypeName] = useState('');
   const [newStatusName, setNewStatusName] = useState('');
+  const [newProfessionName, setNewProfessionName] = useState('');
+  const [newLoanTypeName, setNewLoanTypeName] = useState('');
   const [dropdownLoading, setDropdownLoading] = useState(true);
   const [referencePartnersList, setReferencePartnersList] = useState([]);
 
@@ -175,6 +204,8 @@ export default function AddCaseModal({ open, onClose, onCreated, defaultChannelN
       setProductOptions(mergeOptions(PRODUCTS, options.product));
       setPropertyTypeOptions(mergeOptions(PROPERTY_TYPES, options.propertyType));
       setStatusOptions(mergeOptions(LOAN_STATUSES, options.status));
+      setProfessionOptions(mergeOptions(PROFESSIONS, options.profession));
+      setLoanTypeOptions(mergeOptions(LOAN_TYPES, options.loanType));
     } catch (err) {
       console.error('Failed to load dropdown options:', err);
       // Fallback to constants
@@ -183,6 +214,8 @@ export default function AddCaseModal({ open, onClose, onCreated, defaultChannelN
       setProductOptions(PRODUCTS.map(v => ({ label: v, value: v, _id: null })));
       setPropertyTypeOptions(PROPERTY_TYPES.map(v => ({ label: v, value: v, _id: null })));
       setStatusOptions(LOAN_STATUSES.map(v => ({ label: v, value: v, _id: null })));
+      setProfessionOptions(PROFESSIONS.map(v => ({ label: v, value: v, _id: null })));
+      setLoanTypeOptions(LOAN_TYPES.map(v => ({ label: v, value: v, _id: null })));
     } finally {
       setDropdownLoading(false);
     }
@@ -314,6 +347,40 @@ export default function AddCaseModal({ open, onClose, onCreated, defaultChannelN
     }
   }
 
+  async function handleAddProfession() {
+    if (!newProfessionName.trim()) {
+      setError('Profession cannot be empty');
+      return;
+    }
+    try {
+      const r = await casesService.createDropdownOption('profession', newProfessionName, newProfessionName);
+      const newObj = { label: newProfessionName, value: newProfessionName, _id: r.option?._id || null };
+      setProfessionOptions([...professionOptions, newObj]);
+      setForm((f) => ({ ...f, profession: newProfessionName }));
+      setNewProfessionName('');
+      setShowAddProfession(false);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to add profession');
+    }
+  }
+
+  async function handleAddLoanType() {
+    if (!newLoanTypeName.trim()) {
+      setError('Loan type cannot be empty');
+      return;
+    }
+    try {
+      const r = await casesService.createDropdownOption('loanType', newLoanTypeName, newLoanTypeName);
+      const newObj = { label: newLoanTypeName, value: newLoanTypeName, _id: r.option?._id || null };
+      setLoanTypeOptions([...loanTypeOptions, newObj]);
+      setForm((f) => ({ ...f, loanType: newLoanTypeName }));
+      setNewLoanTypeName('');
+      setShowAddLoanType(false);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to add loan type');
+    }
+  }
+
   async function handleDeleteDropdownOption(optionId, optionValue, setterFn, currentOptions) {
     if (!optionId) return; // static options can't be deleted
     if (!window.confirm(`Delete option "${optionValue}" from the dropdown? This won't affect existing cases.`)) return;
@@ -354,6 +421,23 @@ export default function AddCaseModal({ open, onClose, onCreated, defaultChannelN
         constructionStage: form.constructionStage !== '' && form.constructionStage != null
           ? parseFloat(form.constructionStage)
           : null,
+        // Lead / profile fields
+        cibilRemark: form.cibilRemark || '',
+        specialRemark: form.specialRemark || '',
+        loanType: form.loanType || '',
+        obligation: form.obligation ? rupeesToPaisa(parseFloat(form.obligation)) : 0,
+        loanRequiredAmount: form.loanRequiredAmount ? rupeesToPaisa(parseFloat(form.loanRequiredAmount)) : 0,
+        profileDetails: {
+          companyName: form.profileDetails.companyName || '',
+          grossSalary: form.profileDetails.grossSalary ? rupeesToPaisa(parseFloat(form.profileDetails.grossSalary)) : 0,
+          netSalary: form.profileDetails.netSalary ? rupeesToPaisa(parseFloat(form.profileDetails.netSalary)) : 0,
+          itr: form.profileDetails.itr ? rupeesToPaisa(parseFloat(form.profileDetails.itr)) : 0,
+          turnover: form.profileDetails.turnover ? rupeesToPaisa(parseFloat(form.profileDetails.turnover)) : 0,
+        },
+        propertyDetails: {
+          marketValue: form.propertyDetails.marketValue ? rupeesToPaisa(parseFloat(form.propertyDetails.marketValue)) : 0,
+          saleDeedValue: form.propertyDetails.saleDeedValue ? rupeesToPaisa(parseFloat(form.propertyDetails.saleDeedValue)) : 0,
+        },
         referralPayout: {
           percentage: Number(form.referralPayout.percentage) || 0,
           amount: Number(form.referralPayout.amount) ? rupeesToPaisa(parseFloat(form.referralPayout.amount)) : 0,
@@ -386,7 +470,7 @@ export default function AddCaseModal({ open, onClose, onCreated, defaultChannelN
         className="w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-xl bg-white p-6 shadow-2xl"
       >
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-slate-800">{editData ? 'Edit Case' : 'Add New Case'}</h2>
+          <h2 className="text-lg font-semibold text-slate-800">{editData ? 'Edit Case' : isLead ? 'New Lead' : 'Add New Case'}</h2>
           <button
             type="button"
             onClick={onClose}
@@ -404,7 +488,23 @@ export default function AddCaseModal({ open, onClose, onCreated, defaultChannelN
           <Input label="Customer Name *" {...field('customerName')} required />
           <Input label="Phone *" {...field('phone')} required />
           <Input label="Email" type="email" {...field('email')} />
-          <Select label="Profession" options={PROFESSIONS} {...field('profession')} />
+          <SelectWithAdd
+            label="Profile / Profession"
+            optionObjects={professionOptions}
+            value={form.profession}
+            onChange={(e) => setForm((f) => ({ ...f, profession: e.target.value }))}
+            onAddClick={() => setShowAddProfession(true)}
+            onDeleteOption={(id, val) => handleDeleteDropdownOption(id, val, setProfessionOptions, professionOptions)}
+          />
+          {showAddProfession && (
+            <AddOptionForm
+              label="Profession"
+              value={newProfessionName}
+              onChange={setNewProfessionName}
+              onAdd={handleAddProfession}
+              onCancel={() => { setShowAddProfession(false); setNewProfessionName(''); }}
+            />
+          )}
           <Input label="File Number" {...field('fileNumber')} placeholder="e.g. ZPL-001" />
           <Select label="Handled By" options={employees.map((e) => ({ value: e._id, label: `${e.name} (${e.role})` }))} {...field('handledBy')} hasEmpty />
         </div>
@@ -431,10 +531,6 @@ export default function AddCaseModal({ open, onClose, onCreated, defaultChannelN
           )}
 
           <Input label="Loan Amount (₹)" type="number" min="0" {...field('loanAmount')} />
-          <Select label="CIBIL Issue" options={['Yes', 'No']} {...field('cibilIssue')} hasEmpty />
-
-          {/* Transaction Type — new field */}
-          <Select label="Transaction Type" options={['Builder Purchase', 'Resale']} {...field('transactionType')} hasEmpty />
 
           {/* Construction Stage — new field */}
           <label className="block">
@@ -522,6 +618,79 @@ export default function AddCaseModal({ open, onClose, onCreated, defaultChannelN
               onCancel={() => { setShowAddStatus(false); setNewStatusName(''); }}
             />
           )}
+        </div>
+
+        {/* Lead / Profile Details */}
+        <SectionTitle>Lead / Profile Details</SectionTitle>
+        <div className="grid grid-cols-3 gap-3 mb-4">
+          {/* Income profile — fields depend on profession */}
+          {(form.profession === 'Salaried' || form.profession === 'Mix' || form.profession === 'Other') && (
+            <>
+              <Input label="Company Name" {...nestedField('profileDetails', 'companyName')} />
+              <Input label="Gross Salary P/M (₹)" type="number" min="0" {...nestedField('profileDetails', 'grossSalary')} />
+              <Input label="Net Salary P/M (₹)" type="number" min="0" {...nestedField('profileDetails', 'netSalary')} />
+            </>
+          )}
+          {(form.profession === 'Self Employed' || form.profession === 'Professional' || form.profession === 'Businessman' || form.profession === 'Mix' || form.profession === 'Other') && (
+            <>
+              <Input label="ITR (₹)" type="number" min="0" {...nestedField('profileDetails', 'itr')} />
+              <Input label="Turn Over (₹)" type="number" min="0" {...nestedField('profileDetails', 'turnover')} />
+            </>
+          )}
+
+          {/* Obligation */}
+          <Input label="Obligation (₹/month)" type="number" min="0" {...field('obligation')} />
+
+          {/* Loan required amount + words */}
+          <Input label="Loan Required Amount (₹)" type="number" min="0" {...field('loanRequiredAmount')} />
+          <div className="col-span-2 flex items-end">
+            <span className="text-xs italic text-slate-500">
+              {form.loanRequiredAmount ? rupeesToWords(parseFloat(form.loanRequiredAmount)) : 'Amount in words appears here'}
+            </span>
+          </div>
+
+          {/* Loan Type (dropdown + add) */}
+          <SelectWithAdd
+            label="Loan Type"
+            optionObjects={loanTypeOptions}
+            value={form.loanType}
+            onChange={(e) => setForm((f) => ({ ...f, loanType: e.target.value }))}
+            onAddClick={() => setShowAddLoanType(true)}
+            onDeleteOption={(id, val) => handleDeleteDropdownOption(id, val, setLoanTypeOptions, loanTypeOptions)}
+          />
+          {showAddLoanType && (
+            <AddOptionForm
+              label="Loan Type"
+              value={newLoanTypeName}
+              onChange={setNewLoanTypeName}
+              onAdd={handleAddLoanType}
+              onCancel={() => { setShowAddLoanType(false); setNewLoanTypeName(''); }}
+            />
+          )}
+
+          {/* Property Details (Resale/Builder + values; constructionStage is in Loan Details) */}
+          <div className="col-span-3 mt-2 mb-1 border-t border-slate-100 pt-3 text-xs font-bold text-slate-500 uppercase tracking-wide">Property Details</div>
+          <Select label="Resale / Builder Purchase" options={['Builder Purchase', 'Resale']} {...field('transactionType')} hasEmpty />
+          <Input label="Market Value (₹)" type="number" min="0" {...nestedField('propertyDetails', 'marketValue')} />
+          <Input label="Sale Deed Value (₹)" type="number" min="0" {...nestedField('propertyDetails', 'saleDeedValue')} />
+
+          {/* CIBIL issue + remark */}
+          <div className="col-span-3 mt-2 mb-1 border-t border-slate-100 pt-3 text-xs font-bold text-slate-500 uppercase tracking-wide">CIBIL & Remarks</div>
+          <Select label="CIBIL Issue" options={['Yes', 'No']} {...field('cibilIssue')} hasEmpty />
+          {form.cibilIssue === 'Yes' && (
+            <div className="col-span-2">
+              <Input label="CIBIL Remark" {...field('cibilRemark')} placeholder="Reason / details of CIBIL issue" />
+            </div>
+          )}
+          <label className="block col-span-3">
+            <span className="text-xs font-medium text-slate-600">Special Remark (if any)</span>
+            <textarea
+              rows={2}
+              value={form.specialRemark}
+              onChange={(e) => setForm((f) => ({ ...f, specialRemark: e.target.value }))}
+              className="mt-0.5 w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
+            />
+          </label>
         </div>
 
         {/* Bank Login */}

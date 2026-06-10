@@ -7,14 +7,60 @@ export default function ReferencePartnersPage() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
   const [error, setError] = useState(null);
   const [expanded, setExpanded] = useState(null);
+  // Per-case selection for targeted CSV export. Keyed by case _id.
+  const [selectedCases, setSelectedCases] = useState({});
+
+  function toggleCase(id) {
+    setSelectedCases((s) => ({ ...s, [id]: !s[id] }));
+  }
+  function toggleAll(cases, on) {
+    setSelectedCases((s) => {
+      const next = { ...s };
+      cases.forEach((c) => { next[c._id] = on; });
+      return next;
+    });
+  }
+
+  function downloadReferenceCSV(item, casesToExport) {
+    const headers = ['Sr No', 'Customer Name', 'Phone', 'Bank', 'Status', 'Entry Date', 'Loan Amount', 'Disbursed Amount', 'Payout %', 'Payout Amount', 'Payout Status', 'Paid Date', 'Mode', 'Bank Name'];
+    const rows = casesToExport.map((c) => [
+      c.srNo,
+      `"${c.customerName || ''}"`,
+      c.phone || '',
+      `"${c.bankName || ''}"`,
+      c.currentStatus || '',
+      c.createdAt ? new Date(c.createdAt).toISOString().split('T')[0] : '',
+      (c.loanAmount || 0) / 100,
+      (c.disbursedAmount || 0) / 100,
+      c.referralPayout?.percentage || 0,
+      (c.referralPayout?.amount || 0) / 100,
+      c.referralPayout?.status || '',
+      c.referralPayout?.date ? new Date(c.referralPayout.date).toISOString().split('T')[0] : '',
+      c.referralPayout?.mode || '',
+      `"${c.referralPayout?.bankName || ''}"`,
+    ]);
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
+    const link = document.createElement('a');
+    link.setAttribute('href', encodeURI(csvContent));
+    link.setAttribute('download', `${(item.referenceName || 'reference').replace(/[^a-zA-Z0-9]/g, '_')}_references.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
 
   async function load() {
     setLoading(true);
     setError(null);
     try {
-      const r = await casesService.referencePartners({ search: search || undefined });
+      const r = await casesService.referencePartners({
+        search: search || undefined,
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
+      });
       setItems(r.items);
     } catch (e) {
       setError(e.response?.data?.error || 'Failed to load');
@@ -45,12 +91,38 @@ export default function ReferencePartnersPage() {
             onKeyDown={(e) => e.key === 'Enter' && load()}
             className="w-72 rounded-md border border-slate-300 px-3 py-1.5 text-sm focus:border-brand focus:outline-none focus:ring-1 focus:ring-brand"
           />
+          <label className="flex items-center gap-1 text-xs text-slate-500">
+            From
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className="rounded-md border border-slate-300 px-2 py-1.5 text-sm focus:border-brand focus:outline-none"
+            />
+          </label>
+          <label className="flex items-center gap-1 text-xs text-slate-500">
+            To
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className="rounded-md border border-slate-300 px-2 py-1.5 text-sm focus:border-brand focus:outline-none"
+            />
+          </label>
           <button
             onClick={load}
             className="rounded-md border border-slate-300 px-3 py-1.5 text-xs text-slate-700 hover:bg-slate-50"
           >
-            Search
+            Apply
           </button>
+          {(dateFrom || dateTo || search) && (
+            <button
+              onClick={() => { setDateFrom(''); setDateTo(''); setSearch(''); setTimeout(load, 0); }}
+              className="rounded-md border border-slate-300 px-3 py-1.5 text-xs text-slate-500 hover:bg-slate-50"
+            >
+              Reset
+            </button>
+          )}
           <div className="ml-auto text-sm text-slate-500">
             {items.length} reference partner{items.length === 1 ? '' : 's'}
           </div>
@@ -126,44 +198,44 @@ export default function ReferencePartnersPage() {
 
               {expanded === idx && (
                 <div className="border-t border-slate-200 px-5 py-3">
-                  <div className="mb-2 flex items-center justify-between">
-                    <div className="text-xs font-semibold uppercase text-slate-500">Referred Cases</div>
-                    <button
-                      onClick={() => {
-                        const headers = ['Sr No', 'Customer Name', 'Phone', 'Bank', 'Status', 'Loan Amount', 'Disbursed Amount', 'Payout %', 'Payout Amount', 'Payout Status', 'Paid Date', 'Mode', 'Bank Name'];
-                        const rows = item.cases.map(c => [
-                          c.srNo,
-                          `"${c.customerName || ''}"`,
-                          c.phone || '',
-                          `"${c.bankName || ''}"`,
-                          c.currentStatus || '',
-                          (c.loanAmount || 0) / 100,
-                          (c.disbursedAmount || 0) / 100,
-                          c.referralPayout?.percentage || 0,
-                          (c.referralPayout?.amount || 0) / 100,
-                          c.referralPayout?.status || '',
-                          c.referralPayout?.date ? new Date(c.referralPayout.date).toISOString().split('T')[0] : '',
-                          c.referralPayout?.mode || '',
-                          `"${c.referralPayout?.bankName || ''}"`
-                        ]);
-                        const csvContent = "data:text/csv;charset=utf-8," + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-                        const encodedUri = encodeURI(csvContent);
-                        const link = document.createElement('a');
-                        link.setAttribute('href', encodedUri);
-                        link.setAttribute('download', `${item.referenceName.replace(/[^a-zA-Z0-9]/g, '_')}_references.csv`);
-                        document.body.appendChild(link);
-                        link.click();
-                        document.body.removeChild(link);
-                      }}
-                      className="rounded bg-brand px-3 py-1.5 text-[10px] font-bold text-white hover:bg-brand-700"
-                    >
-                      Download CSV
-                    </button>
-                  </div>
+                  {(() => {
+                    const selCount = item.cases.filter((c) => selectedCases[c._id]).length;
+                    return (
+                      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+                        <div className="flex items-center gap-3">
+                          <div className="text-xs font-semibold uppercase text-slate-500">Referred Cases</div>
+                          <span className="text-[11px] text-slate-400">
+                            {selCount > 0 ? `${selCount} selected` : 'Select cases to export only those'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => toggleAll(item.cases, true)}
+                            className="rounded border border-slate-300 px-2 py-1 text-[10px] font-semibold text-slate-600 hover:bg-slate-50"
+                          >
+                            Select all
+                          </button>
+                          <button
+                            onClick={() => toggleAll(item.cases, false)}
+                            className="rounded border border-slate-300 px-2 py-1 text-[10px] font-semibold text-slate-600 hover:bg-slate-50"
+                          >
+                            Clear
+                          </button>
+                          <button
+                            onClick={() => downloadReferenceCSV(item, selCount > 0 ? item.cases.filter((c) => selectedCases[c._id]) : item.cases)}
+                            className="rounded bg-brand px-3 py-1.5 text-[10px] font-bold text-white hover:bg-brand-700"
+                          >
+                            {selCount > 0 ? `Download Selected (${selCount})` : 'Download All CSV'}
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })()}
                   <div className="overflow-x-auto">
                     <table className="min-w-full text-xs">
                       <thead className="border-b border-slate-200 bg-slate-50 text-slate-600">
                         <tr>
+                          <th className="px-2 py-1.5 text-center w-8"></th>
                           <th className="px-3 py-1.5 text-left">Sr No</th>
                           <th className="px-3 py-1.5 text-left">Customer</th>
                           <th className="px-3 py-1.5 text-left">Phone</th>
@@ -180,6 +252,13 @@ export default function ReferencePartnersPage() {
                           const sc = STATUS_COLORS[c.currentStatus] || {};
                           return (
                             <tr key={ci} className="border-b border-slate-100 last:border-0">
+                              <td className="px-2 py-1.5 text-center">
+                                <input
+                                  type="checkbox"
+                                  checked={!!selectedCases[c._id]}
+                                  onChange={() => toggleCase(c._id)}
+                                />
+                              </td>
                               <td className="px-3 py-1.5 font-mono text-slate-500">#{c.srNo}</td>
                               <td className="px-3 py-1.5 font-medium text-slate-800">{c.customerName}</td>
                               <td className="px-3 py-1.5 text-slate-600">{c.phone}</td>

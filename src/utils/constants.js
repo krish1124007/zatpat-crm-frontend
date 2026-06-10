@@ -13,9 +13,18 @@ export const LOAN_STATUSES = [
   'Not interested',
 ];
 
-export const PROFESSIONS = ['Salaried', 'Businessman', 'Professional'];
+export const PROFESSIONS = [
+  'Salaried',
+  'Self Employed',
+  'Professional',
+  'Businessman',
+  'Mix',
+  'Other',
+];
 
 export const PRODUCTS = ['HL', 'LAP', 'BT', 'TOPUP', 'ML', 'CommercialPurchase', 'Other'];
+
+export const LOAN_TYPES = ['HL', 'LAP', 'BT', 'TOPUP', 'PL', 'BL', 'Mortgage', 'Other'];
 
 export const PROPERTY_TYPES = [
   'Flat',

@@ -1,6 +1,6 @@
 // Tiny CSV exporter — escapes quotes/newlines, triggers a browser download.
 
-import { paisaToRupees, formatDate } from './format.js';
+import { paisaToRupees, formatDate, formatDateTime } from './format.js';
 
 function escape(v) {
   if (v == null) return '';
@@ -52,9 +52,11 @@ export function exportCasesCSV(rows) {
     { label: 'Sanctioned (₹)', get: (r) => paisaToRupees(r.sanctionedAmount) },
     { label: 'Disbursed (₹)', get: (r) => paisaToRupees(r.disbursedAmount) },
     { label: 'Pending Payment (₹)', get: (r) => paisaToRupees(r.pendingPaymentAmount) },
+    { label: 'Entry Date', get: (r) => formatDate(r.entryDate) },
     { label: 'Login Date', get: (r) => formatDate(r.loginDate) },
     { label: 'Sanction Date', get: (r) => formatDate(r.sanctionDate) },
     { label: 'Disbursement Date', get: (r) => formatDate(r.disbursementDate) },
+    { label: 'Bank Sheet Last Updated', get: (r) => formatDateTime(r.bankSheetUpdatedAt) },
   ];
   const stamp = new Date().toISOString().slice(0, 10);
   downloadCSV(`zatpat-cases-${stamp}.csv`, columns, rows);

@@ -34,6 +34,13 @@ export const salaryService = {
   suggestIncentive: (params) =>
     api.get('/salary/incentive/suggest', { params }).then((r) => r.data),
   employees: () => api.get('/salary/employees').then((r) => r.data),
+  uploadReport: (id, file) => {
+    const fd = new FormData();
+    fd.append('file', file);
+    return api
+      .post(`/salary/${id}/report`, fd, { headers: { 'Content-Type': 'multipart/form-data' } })
+      .then((r) => r.data);
+  },
 };
 
 export const reportsService = {

@@ -12,6 +12,10 @@ export const dashboardService = {
   productBreakdown: () => api.get('/dashboard/product-breakdown').then((r) => r.data),
   pipelineSummary: () => api.get('/dashboard/pipeline-summary').then((r) => r.data),
   allDistributions: () => api.get('/dashboard/all-distributions').then((r) => r.data),
+  conversionRatios: () => api.get('/dashboard/conversion-ratios').then((r) => r.data),
+  todaysWork: () => api.get('/dashboard/todays-work').then((r) => r.data),
+  activities: (limit = 30) =>
+    api.get('/dashboard/activities', { params: { limit } }).then((r) => r.data),
 };
 
 export const insuranceService = {
