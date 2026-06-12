@@ -624,56 +624,9 @@ export default function AddCaseModal({ open, onClose, onCreated, defaultChannelN
           )}
         </div>
 
-        {/* Lead / Profile Details */}
-        <SectionTitle>Lead / Profile Details</SectionTitle>
+        {/* Property & CIBIL Details */}
+        <SectionTitle>Property Details</SectionTitle>
         <div className="grid grid-cols-3 gap-3 mb-4">
-          {/* Income profile — fields depend on profession */}
-          {(form.profession === 'Salaried' || form.profession === 'Mix' || form.profession === 'Other') && (
-            <>
-              <Input label="Company Name" {...nestedField('profileDetails', 'companyName')} />
-              <Input label="Gross Salary P/M (₹)" type="number" min="0" {...nestedField('profileDetails', 'grossSalary')} />
-              <Input label="Net Salary P/M (₹)" type="number" min="0" {...nestedField('profileDetails', 'netSalary')} />
-            </>
-          )}
-          {(form.profession === 'Self Employed' || form.profession === 'Professional' || form.profession === 'Businessman' || form.profession === 'Mix' || form.profession === 'Other') && (
-            <>
-              <Input label="ITR (₹)" type="number" min="0" {...nestedField('profileDetails', 'itr')} />
-              <Input label="Turn Over (₹)" type="number" min="0" {...nestedField('profileDetails', 'turnover')} />
-            </>
-          )}
-
-          {/* Obligation */}
-          <Input label="Obligation (₹/month)" type="number" min="0" {...field('obligation')} />
-
-          {/* Loan required amount + words */}
-          <Input label="Loan Required Amount (₹)" type="number" min="0" {...field('loanRequiredAmount')} />
-          <div className="col-span-2 flex items-end">
-            <span className="text-xs italic text-slate-500">
-              {form.loanRequiredAmount ? rupeesToWords(parseFloat(form.loanRequiredAmount)) : 'Amount in words appears here'}
-            </span>
-          </div>
-
-          {/* Loan Type (dropdown + add) */}
-          <SelectWithAdd
-            label="Loan Type"
-            optionObjects={loanTypeOptions}
-            value={form.loanType}
-            onChange={(e) => setForm((f) => ({ ...f, loanType: e.target.value }))}
-            onAddClick={() => setShowAddLoanType(true)}
-            onDeleteOption={(id, val) => handleDeleteDropdownOption(id, val, setLoanTypeOptions, loanTypeOptions)}
-          />
-          {showAddLoanType && (
-            <AddOptionForm
-              label="Loan Type"
-              value={newLoanTypeName}
-              onChange={setNewLoanTypeName}
-              onAdd={handleAddLoanType}
-              onCancel={() => { setShowAddLoanType(false); setNewLoanTypeName(''); }}
-            />
-          )}
-
-          {/* Property Details (Resale/Builder + values; constructionStage is in Loan Details) */}
-          <div className="col-span-3 mt-2 mb-1 border-t border-slate-100 pt-3 text-xs font-bold text-slate-500 uppercase tracking-wide">Property Details</div>
           <Select label="Resale / Builder Purchase" options={['Builder Purchase', 'Resale']} {...field('transactionType')} hasEmpty />
           <Input label="Market Value (₹)" type="number" min="0" {...nestedField('propertyDetails', 'marketValue')} />
           <Input label="Sale Deed Value (₹)" type="number" min="0" {...nestedField('propertyDetails', 'saleDeedValue')} />
