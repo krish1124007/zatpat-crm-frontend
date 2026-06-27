@@ -51,7 +51,21 @@ export default function InvoicesPage() {
   }
 
   const columns = [
-    { key: 'invoiceNo', label: 'Invoice #', cellClass: 'font-mono font-medium text-slate-800' },
+    {
+      key: 'invoiceNo',
+      label: 'Invoice #',
+      cellClass: 'font-mono font-medium text-slate-800',
+      render: (r) => (
+        <span className="flex items-center gap-1.5">
+          {r.invoiceNo}
+          {r.source === 'case' && (
+            <span className="rounded-full bg-indigo-50 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-indigo-600">
+              from case
+            </span>
+          )}
+        </span>
+      ),
+    },
     { key: 'date', label: 'Date', render: (r) => formatDate(r.date) },
     {
       key: 'partner',
@@ -94,32 +108,36 @@ export default function InvoicesPage() {
     {
       key: 'actions',
       label: '',
-      render: (r) => (
-        <div className="flex gap-1">
-          <a
-            href={invoicesService.pdfUrl(r._id)}
-            target="_blank"
-            rel="noreferrer"
-            className="rounded border border-slate-300 px-2 py-0.5 text-xs hover:bg-slate-50"
-          >
-            PDF
-          </a>
-          {r.status === 'Pending' && (
-            <button
-              onClick={() => markPaid(r)}
-              className="rounded border border-emerald-200 px-2 py-0.5 text-xs text-emerald-700 hover:bg-emerald-50"
+      render: (r) =>
+        r.source === 'case' ? (
+          // Case invoices are managed inside the case (Payments tab), not here.
+          <span className="text-xs text-slate-400">in case #{r.loanCase?.srNo}</span>
+        ) : (
+          <div className="flex gap-1">
+            <a
+              href={invoicesService.pdfUrl(r._id)}
+              target="_blank"
+              rel="noreferrer"
+              className="rounded border border-slate-300 px-2 py-0.5 text-xs hover:bg-slate-50"
             >
-              Mark Paid
+              PDF
+            </a>
+            {r.status === 'Pending' && (
+              <button
+                onClick={() => markPaid(r)}
+                className="rounded border border-emerald-200 px-2 py-0.5 text-xs text-emerald-700 hover:bg-emerald-50"
+              >
+                Mark Paid
+              </button>
+            )}
+            <button
+              onClick={() => handleDelete(r)}
+              className="rounded border border-red-200 px-2 py-0.5 text-xs text-red-600 hover:bg-red-50"
+            >
+              Delete
             </button>
-          )}
-          <button
-            onClick={() => handleDelete(r)}
-            className="rounded border border-red-200 px-2 py-0.5 text-xs text-red-600 hover:bg-red-50"
-          >
-            Delete
-          </button>
-        </div>
-      ),
+          </div>
+        ),
     },
   ];
 
