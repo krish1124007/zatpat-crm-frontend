@@ -22,6 +22,7 @@ export default function Dashboard() {
   const [conversion, setConversion] = useState(null);
   const [todaysWork, setTodaysWork] = useState(null);
   const [activities, setActivities] = useState([]);
+  const [overdue, setOverdue] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [selectedHandler, setSelectedHandler] = useState(null);
@@ -44,6 +45,28 @@ export default function Dashboard() {
     }
   }
 
+  async function refreshOverdue() {
+    try { setOverdue(await dashboardService.overdue()); } catch (e) { console.error(e); }
+  }
+
+  // Admin/Manager: grant a specific case extra days before it counts as overdue.
+  async function extendCase(item) {
+    const input = window.prompt(
+      `Extra days before "${item.customerName}" (#${item.srNo}) is overdue:`,
+      String(item.extensionDays || 0)
+    );
+    if (input === null) return;
+    const n = parseInt(input, 10);
+    if (!Number.isFinite(n) || n < 0) { alert('Enter a valid number of days (0 or more).'); return; }
+    try {
+      const { casesService } = await import('../services/cases.service.js');
+      await casesService.update(item._id, { slaExtensionDays: n });
+      refreshOverdue();
+    } catch (e) {
+      alert(e.response?.data?.error || 'Failed to extend');
+    }
+  }
+
   useEffect(() => {
     let cancelled = false;
     Promise.all([
@@ -61,9 +84,11 @@ export default function Dashboard() {
       dashboardService.conversionRatios(),
       dashboardService.todaysWork(),
       dashboardService.activities(30),
+      dashboardService.overdue(),
     ])
-      .then(([k, b, t, bk, rc, fi, ch, hp, pb, ps, dist, conv, tw, act]) => {
+      .then(([k, b, t, bk, rc, fi, ch, hp, pb, ps, dist, conv, tw, act, ov]) => {
         if (cancelled) return;
+        setOverdue(ov);
         setKpis(k);
         setBreakdown(b);
         setTrend(t);
@@ -116,6 +141,67 @@ export default function Dashboard() {
               <Kpi label="This Month Disbursed" value={kpis.monthDisbursed.count} hint={formatINR(kpis.monthDisbursed.amount)} accent="text-emerald-700" onClick={() => handleKpiClick('This Month Disbursed', { status: 'Disbursed' })} />
               <Kpi label="Pending Payments" value={kpis.pendingPayment.count} hint={formatINR(kpis.pendingPayment.amount)} accent="text-amber-700" onClick={() => handleKpiClick('Pending Payments', { pendingPayment: 'true' })} />
             </div>
+
+            {/* ── Overdue / SLA Alerts ── */}
+            {overdue && overdue.count > 0 && (
+              <Panel title={`⏰ Overdue Inquiries (${overdue.count})`} className="mb-4">
+                <p className="mb-2 text-xs text-slate-500">
+                  Cases that have stayed in their current stage longer than the configured limit. Admins can set limits in
+                  Settings → Overdue Rules.
+                </p>
+                <div className="max-h-80 overflow-y-auto">
+                  <table className="min-w-full text-xs">
+                    <thead className="border-b border-slate-200 bg-slate-50 text-slate-600">
+                      <tr>
+                        <th className="px-3 py-1.5 text-left">Sr</th>
+                        <th className="px-3 py-1.5 text-left">Customer</th>
+                        <th className="px-3 py-1.5 text-left">Stage</th>
+                        <th className="px-3 py-1.5 text-left">Assigned</th>
+                        <th className="px-3 py-1.5 text-right">In stage</th>
+                        <th className="px-3 py-1.5 text-right">Limit</th>
+                        <th className="px-3 py-1.5 text-right">Overdue by</th>
+                        {overdue.canExtend && <th className="px-3 py-1.5 text-right">Action</th>}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {overdue.items.map((o) => {
+                        const sc = STATUS_COLORS[o.currentStatus] || {};
+                        return (
+                          <tr key={o._id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
+                            <td className="px-3 py-1.5 font-mono text-slate-400">#{o.srNo}</td>
+                            <td className="px-3 py-1.5">
+                              <Link to="/cases" className="font-medium text-slate-800 hover:text-brand">{o.customerName}</Link>
+                            </td>
+                            <td className="px-3 py-1.5">
+                              <span className="rounded-full px-2 py-0.5 text-[10px] font-medium" style={{ backgroundColor: sc.bg, color: sc.fg }}>
+                                {o.currentStatus}
+                              </span>
+                            </td>
+                            <td className="px-3 py-1.5 text-indigo-700">{o.handledBy?.name || '—'}</td>
+                            <td className="px-3 py-1.5 text-right tabular-nums">{o.daysInStage}d</td>
+                            <td className="px-3 py-1.5 text-right tabular-nums text-slate-500">
+                              {o.limit}d{o.extensionDays ? ` +${o.extensionDays}` : ''}
+                            </td>
+                            <td className="px-3 py-1.5 text-right">
+                              <span className="rounded-full bg-red-100 px-2 py-0.5 text-[10px] font-bold text-red-700">
+                                {o.daysOverdue}d
+                              </span>
+                            </td>
+                            {overdue.canExtend && (
+                              <td className="px-3 py-1.5 text-right">
+                                <button onClick={() => extendCase(o)} className="font-medium text-indigo-600 hover:text-indigo-800">
+                                  Extend
+                                </button>
+                              </td>
+                            )}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </Panel>
+            )}
 
             {/* ── ROW 2: Secondary KPIs ── */}
             <div className="mb-4 grid gap-3 sm:grid-cols-3 lg:grid-cols-6">

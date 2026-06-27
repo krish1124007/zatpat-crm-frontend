@@ -22,4 +22,8 @@ export const adminService = {
   createUser: (data) => api.post('/admin/users', data).then((r) => r.data),
   updateUser: (id, data) => api.patch(`/admin/users/${id}`, data).then((r) => r.data),
   deleteUser: (id) => api.delete(`/admin/users/${id}`).then((r) => r.data),
+
+  // Settings — SLA / overdue day-limits
+  getSettings: () => api.get('/settings').then((r) => r.data),
+  updateSla: (slaDaysByStatus) => api.put('/settings/sla', { slaDaysByStatus }).then((r) => r.data),
 };

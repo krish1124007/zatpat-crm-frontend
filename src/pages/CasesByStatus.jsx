@@ -1,8 +1,9 @@
 import { useEffect, useState, useMemo } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, useSearchParams, Link } from 'react-router-dom';
 import { casesService } from '../services/cases.service.js';
+import { useCasesRefresh } from '../utils/casesSync.js';
 import { formatINR, formatDate, toDateInput } from '../utils/format.js';
-import { LOAN_STATUSES, STATUS_COLORS, POST_DISBURSEMENT_STAGES } from '../utils/constants.js';
+import { LOAN_STATUSES, STATUS_COLORS, POST_DISBURSEMENT_STAGES, ACTIVE_PIPELINE_STATUSES } from '../utils/constants.js';
 import AddCaseModal from '../components/cases/AddCaseModal.jsx';
 
 
@@ -21,8 +22,30 @@ const statusLabels = {
   'Not interested': 'Not interested',
 };
 
+// Named status groups: a single :status value that expands to several statuses.
+// `statuses: null` means no status constraint (match all cases).
+const STATUS_GROUPS = {
+  active: { label: 'New Inquiry', statuses: ACTIVE_PIPELINE_STATUSES },
+  invoices: { label: 'Invoices', statuses: null },
+};
+
+// Query-string sub-filters carried by sidebar folder links, with display labels.
+const SUBFILTER_KEYS = [
+  'disbursementType', 'handoverConfirmation', 'bankerConfirmation',
+  'invoiceStatus', 'paymentStatus', 'gstStatus',
+];
+const SUBFILTER_LABELS = {
+  disbursementType: (v) => `${v} Disbursed`,
+  handoverConfirmation: (v) => `Handover ${v}`,
+  bankerConfirmation: (v) => `Banker Confirmation ${v}`,
+  invoiceStatus: (v) => `Invoices ${v}`,
+  paymentStatus: (v) => (v === 'done' ? 'Payment Done' : 'Payment Pending'),
+  gstStatus: (v) => (v === 'Received' ? 'GST Done' : 'GST Pending'),
+};
+
 export default function CasesByStatusPage() {
   const { status } = useParams();
+  const [searchParams] = useSearchParams();
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -39,13 +62,25 @@ export default function CasesByStatusPage() {
     setLoading(true);
     setError(null);
     try {
-      const params = { status, limit: 200 };
+      const group = STATUS_GROUPS[status];
+      const params = { limit: 200 };
+      // A group with `statuses: null` (e.g. Invoices) applies no status filter.
+      if (group) {
+        if (group.statuses) params.status = group.statuses.join(',');
+      } else {
+        params.status = status;
+      }
       if (search) params.search = search;
       if (bankFilter) params.bankName = bankFilter;
       if (handlerFilter) params.handledBy = handlerFilter;
       if (dateFrom) params.dateFrom = dateFrom;
       if (dateTo) params.dateTo = dateTo;
       if (postDisbStageFilter) params.postDisbursementStage = postDisbStageFilter;
+      // Sidebar folder sub-filters (disbursed stage / payment / GST).
+      for (const key of SUBFILTER_KEYS) {
+        const val = searchParams.get(key);
+        if (val) params[key] = val;
+      }
       const r = await casesService.list(params);
       setRows(r.items);
     } catch (e) {
@@ -58,8 +93,24 @@ export default function CasesByStatusPage() {
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status, bankFilter, handlerFilter, dateFrom, dateTo, postDisbStageFilter]);
+  }, [status, bankFilter, handlerFilter, dateFrom, dateTo, postDisbStageFilter, searchParams]);
 
+  // Refresh when a case is changed elsewhere or the tab regains focus. Paused
+  // while the edit modal is open.
+  useCasesRefresh(load, !editOpen);
+
+  // Active banker-stage sub-filters from the sidebar folder link, for the heading.
+  const subFilters = useMemo(() => {
+    const out = [];
+    for (const key of SUBFILTER_KEYS) {
+      const val = searchParams.get(key);
+      if (val) out.push(SUBFILTER_LABELS[key](val));
+    }
+    return out;
+  }, [searchParams]);
+
+  const group = STATUS_GROUPS[status];
+  const heading = group ? group.label : (statusLabels[status] || status);
   const sc = STATUS_COLORS[status] || { bg: '#e5e7eb', fg: '#374151', rowBg: '#f3f4f6' };
 
   // Derive unique banks and handlers for filters
@@ -85,9 +136,14 @@ export default function CasesByStatusPage() {
               className="mr-2 inline-block rounded-lg px-3 py-1 text-lg"
               style={{ backgroundColor: sc.bg, color: sc.fg }}
             >
-              {statusLabels[status] || status}
+              {heading}
             </span>
           </h1>
+          {subFilters.map((f) => (
+            <span key={f} className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
+              {f}
+            </span>
+          ))}
           <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">
             {rows.length} cases
           </span>

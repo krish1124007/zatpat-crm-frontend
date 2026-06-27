@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
 import { adminService } from '../services/admin.service.js';
 import { formatDateTime } from '../utils/format.js';
+import { ACTIVE_PIPELINE_STATUSES } from '../utils/constants.js';
 import { useAuth } from '../store/auth.js';
 
 const TABS = [
   { key: 'staff', label: 'Staff Management', icon: '👥' },
+  { key: 'sla', label: 'Overdue Rules', icon: '⏰' },
   { key: 'whitelist', label: 'IP Whitelist', icon: '🛡️' },
   { key: 'audit', label: 'Audit Log', icon: '📜' },
   { key: 'backup', label: 'Backup', icon: '💾' },
@@ -51,6 +53,7 @@ export default function SettingsPage() {
         </div>
 
         {tab === 'staff' && <StaffTab />}
+        {tab === 'sla' && <SlaTab />}
         {tab === 'whitelist' && <IPWhitelistTab />}
         {tab === 'audit' && <AuditTab />}
         {tab === 'backup' && <BackupTab />}
@@ -291,6 +294,105 @@ function StaffModal({ initial, onClose, onSaved }) {
           </button>
         </div>
       </form>
+    </div>
+  );
+}
+
+function SlaTab() {
+  const [days, setDays] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState(null);
+
+  async function load() {
+    setLoading(true);
+    try {
+      const r = await adminService.getSettings();
+      setDays(r.slaDaysByStatus || {});
+    } catch (e) {
+      setError(e.response?.data?.error || 'Failed to load');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => { load(); }, []);
+
+  function setStage(status, value) {
+    setSaved(false);
+    setDays((d) => ({ ...d, [status]: value }));
+  }
+
+  async function save() {
+    setSaving(true);
+    setError(null);
+    try {
+      // Normalise to integers; blank/invalid → 0 (no limit).
+      const payload = {};
+      for (const s of ACTIVE_PIPELINE_STATUSES) {
+        const n = parseInt(days[s], 10);
+        payload[s] = Number.isFinite(n) && n > 0 ? n : 0;
+      }
+      const r = await adminService.updateSla(payload);
+      setDays(r.slaDaysByStatus || payload);
+      setSaved(true);
+    } catch (e) {
+      setError(e.response?.data?.error || 'Failed to save');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800">
+        Set the maximum number of days a case may sit in each stage. If a case stays longer than its
+        limit (plus any per-case extension), it appears in the <strong>Overdue Inquiries</strong> panel on the dashboard.
+        Set a stage to <strong>0</strong> to disable its alert.
+      </div>
+
+      {error && <div className="rounded-md bg-red-50 p-2 text-sm text-red-700">{error}</div>}
+
+      <div className="overflow-hidden rounded-lg bg-white shadow-sm ring-1 ring-slate-200">
+        <table className="min-w-full text-sm">
+          <thead className="border-b border-slate-200 bg-slate-50 text-xs text-slate-600">
+            <tr>
+              <th className="px-4 py-2 text-left">Stage</th>
+              <th className="px-4 py-2 text-left">Overdue after (days)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loading && <tr><td colSpan={2} className="p-4 text-slate-500">Loading…</td></tr>}
+            {!loading && ACTIVE_PIPELINE_STATUSES.map((s) => (
+              <tr key={s} className="border-b border-slate-100 last:border-0">
+                <td className="px-4 py-2 font-medium text-slate-800">{s}</td>
+                <td className="px-4 py-2">
+                  <input
+                    type="number"
+                    min={0}
+                    value={days[s] ?? ''}
+                    onChange={(e) => setStage(s, e.target.value)}
+                    placeholder="0 (off)"
+                    className="w-28 rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+                  />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <button
+          onClick={save}
+          disabled={saving || loading}
+          className="rounded-md bg-brand px-4 py-1.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
+        >
+          {saving ? 'Saving…' : 'Save Rules'}
+        </button>
+        {saved && <span className="text-sm font-medium text-emerald-600">✓ Saved</span>}
+      </div>
     </div>
   );
 }

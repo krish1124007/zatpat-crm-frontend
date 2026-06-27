@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { casesService } from '../services/cases.service.js';
+import { useCasesRefresh } from '../utils/casesSync.js';
 import { formatINR } from '../utils/format.js';
 import { STATUS_COLORS } from '../utils/constants.js';
+import AddCaseModal from '../components/cases/AddCaseModal.jsx';
 
 export default function ReferencePartnersPage() {
   const [items, setItems] = useState([]);
@@ -11,6 +13,24 @@ export default function ReferencePartnersPage() {
   const [dateTo, setDateTo] = useState('');
   const [error, setError] = useState(null);
   const [expanded, setExpanded] = useState(null);
+  // Full case being edited (fetched on demand) + which row is currently loading.
+  const [editCase, setEditCase] = useState(null);
+  const [editLoadingId, setEditLoadingId] = useState(null);
+
+  // The table rows are aggregated and only carry a few fields. Fetch the full
+  // case before opening the editor so the modal doesn't blank out the rest on save.
+  async function openEdit(caseId) {
+    setEditLoadingId(caseId);
+    setError(null);
+    try {
+      const r = await casesService.get(caseId);
+      setEditCase(r.case);
+    } catch (e) {
+      setError(e.response?.data?.error || 'Failed to load case');
+    } finally {
+      setEditLoadingId(null);
+    }
+  }
   // Per-case selection for targeted CSV export. Keyed by case _id.
   const [selectedCases, setSelectedCases] = useState({});
 
@@ -73,6 +93,10 @@ export default function ReferencePartnersPage() {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Refresh when a case changes elsewhere or the tab regains focus. Paused while
+  // the edit modal is open.
+  useCasesRefresh(load, !editCase);
 
   return (
     <div className="h-full overflow-auto p-6">
@@ -245,6 +269,7 @@ export default function ReferencePartnersPage() {
                           <th className="px-3 py-1.5 text-right">Payout %</th>
                           <th className="px-3 py-1.5 text-right">Payout Amt</th>
                           <th className="px-3 py-1.5 text-center">Payout Status</th>
+                          <th className="px-3 py-1.5 text-right">Actions</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -283,6 +308,16 @@ export default function ReferencePartnersPage() {
                                   </span>
                                 ) : '—'}
                               </td>
+                              <td className="px-3 py-1.5 text-right">
+                                <button
+                                  onClick={() => openEdit(c._id)}
+                                  disabled={editLoadingId === c._id}
+                                  className="font-medium text-indigo-600 hover:text-indigo-800 disabled:opacity-50"
+                                  title="Edit case"
+                                >
+                                  {editLoadingId === c._id ? 'Loading…' : '✏️ Edit'}
+                                </button>
+                              </td>
                             </tr>
                           );
                         })}
@@ -301,6 +336,16 @@ export default function ReferencePartnersPage() {
           )}
         </div>
       </div>
+
+      {editCase && (
+        <AddCaseModal
+          key={editCase._id}
+          open
+          editData={editCase}
+          onClose={() => setEditCase(null)}
+          onUpdated={() => { setEditCase(null); load(); }}
+        />
+      )}
     </div>
   );
 }

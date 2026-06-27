@@ -1,4 +1,11 @@
 import { api } from './api.js';
+import { notifyCasesChanged } from '../utils/casesSync.js';
+
+// Broadcast a "cases changed" signal after a mutation so every open case view
+// (All Cases, the status/folder pages, Reference Partners) refreshes from the DB.
+function synced(promise) {
+  return promise.then((data) => { notifyCasesChanged(); return data; });
+}
 
 export const casesService = {
   list(params = {}) {
@@ -8,22 +15,22 @@ export const casesService = {
     return api.get(`/cases/${id}`).then((r) => r.data);
   },
   create(payload) {
-    return api.post('/cases', payload).then((r) => r.data);
+    return synced(api.post('/cases', payload).then((r) => r.data));
   },
   update(id, patch) {
-    return api.patch(`/cases/${id}`, patch).then((r) => r.data);
+    return synced(api.patch(`/cases/${id}`, patch).then((r) => r.data));
   },
   remove(id) {
-    return api.delete(`/cases/${id}`).then((r) => r.data);
+    return synced(api.delete(`/cases/${id}`).then((r) => r.data));
   },
   restore(id) {
-    return api.post(`/cases/${id}/restore`).then((r) => r.data);
+    return synced(api.post(`/cases/${id}/restore`).then((r) => r.data));
   },
   addFollowUp(id, payload) {
-    return api.post(`/cases/${id}/followups`, payload).then((r) => r.data);
+    return synced(api.post(`/cases/${id}/followups`, payload).then((r) => r.data));
   },
   addPayment(id, kind, payload) {
-    return api.post(`/cases/${id}/payments/${kind}`, payload).then((r) => r.data);
+    return synced(api.post(`/cases/${id}/payments/${kind}`, payload).then((r) => r.data));
   },
   uploadSanctionLetter(id, file) {
     const fd = new FormData();

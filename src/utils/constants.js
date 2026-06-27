@@ -13,6 +13,20 @@ export const LOAN_STATUSES = [
   'Not interested',
 ];
 
+// "New Inquiry" working set — the active pipeline only. Excludes the completed
+// (Disbursed) and closed/dead (Rejected, Cancelled, Not interested) buckets, so
+// the view shows only new / running / follow-up inquiries.
+export const ACTIVE_PIPELINE_STATUSES = [
+  'Query',
+  'Hold',
+  'Ready Login',
+  'Bank finalized',
+  'Under Bank Workout',
+  'Under Login Query',
+  'Login done - under process',
+  'Sanctioned',
+];
+
 export const PROFESSIONS = [
   'Salaried',
   'Self Employed',

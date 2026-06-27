@@ -61,6 +61,9 @@ export default function AddCaseModal({ open, onClose, onCreated, defaultChannelN
           emailId: editData.bankerDetails?.emailId || '',
           handoverConfirmation: editData.bankerDetails?.handoverConfirmation || '',
           bankerConfirmation: editData.bankerDetails?.bankerConfirmation || '',
+          // Preserve invoice status — it's set elsewhere (Invoices folder) and the
+          // modal saves bankerDetails wholesale, so it must round-trip or it's lost.
+          invoiceStatus: editData.bankerDetails?.invoiceStatus || '',
         },
         handledBy: editData.handledBy?._id || editData.handledBy || '',
         saleDeedAmount: editData.saleDeedAmount ? (editData.saleDeedAmount / 100).toString() : '',
@@ -130,6 +133,7 @@ export default function AddCaseModal({ open, onClose, onCreated, defaultChannelN
         emailId: '',
         handoverConfirmation: '',
         bankerConfirmation: '',
+        invoiceStatus: '',
       },
       handledBy: '',
       saleDeedAmount: '',

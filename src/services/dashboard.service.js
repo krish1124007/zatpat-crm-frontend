@@ -16,6 +16,7 @@ export const dashboardService = {
   todaysWork: () => api.get('/dashboard/todays-work').then((r) => r.data),
   activities: (limit = 30) =>
     api.get('/dashboard/activities', { params: { limit } }).then((r) => r.data),
+  overdue: () => api.get('/dashboard/overdue').then((r) => r.data),
 };
 
 export const insuranceService = {

@@ -4,6 +4,7 @@ import CasesDataGrid from '../components/grid/CasesDataGrid.jsx';
 import CaseDrawer from '../components/cases/CaseDrawer.jsx';
 import AddCaseModal from '../components/cases/AddCaseModal.jsx';
 import { casesService } from '../services/cases.service.js';
+import { useCasesRefresh } from '../utils/casesSync.js';
 import { salaryService } from '../services/finance.service.js';
 import { CASE_TABS, LOAN_STATUSES, PROFESSIONS, PRODUCTS, LOAN_TYPES } from '../utils/constants.js';
 import { exportCasesCSV } from '../utils/csv.js';
@@ -28,6 +29,9 @@ export default function CasesPage() {
   );
   const [productFilter, setProductFilter] = useState([]);
   const [loanTypeFilter, setLoanTypeFilter] = useState([]);
+  const [professionFilter, setProfessionFilter] = useState(
+    searchParams.get('profession') ? searchParams.get('profession').split(',') : []
+  );
   const [facets, setFacets] = useState({ bankNames: [], professions: PROFESSIONS, products: PRODUCTS, loanTypes: LOAN_TYPES });
   const [selectedId, setSelectedId] = useState(null);
   const [addOpen, setAddOpen] = useState(false);
@@ -58,6 +62,7 @@ export default function CasesPage() {
       if (bankFilter.length > 0) params.bankName = bankFilter.join(',');
       if (productFilter.length > 0) params.product = productFilter.join(',');
       if (loanTypeFilter.length > 0) params.loanType = loanTypeFilter.join(',');
+      if (professionFilter.length > 0) params.profession = professionFilter.join(',');
       if (pendingOnly) params.pendingPayment = 'true';
       if (handlerFilter.length > 0) params.handledBy = handlerFilter.join(',');
       const r = await casesService.list(params);
@@ -68,20 +73,27 @@ export default function CasesPage() {
     } finally {
       setLoading(false);
     }
-  }, [activeTab, statusFilter, bankFilter, productFilter, loanTypeFilter, pendingOnly, handlerFilter]);
+  }, [activeTab, statusFilter, bankFilter, productFilter, loanTypeFilter, professionFilter, pendingOnly, handlerFilter]);
 
   useEffect(() => {
     fetchRows();
   }, [fetchRows]);
 
+  // Re-fetch when another view changes a case, or when this tab regains focus,
+  // so edits made elsewhere (e.g. in a status folder) show here. Paused while an
+  // add/edit modal is open to avoid clobbering the form.
+  useCasesRefresh(fetchRows, !addOpen && !editOpen);
+
   const activeFilterCount =
-    statusFilter.length + handlerFilter.length + bankFilter.length + productFilter.length + loanTypeFilter.length;
+    statusFilter.length + handlerFilter.length + bankFilter.length +
+    productFilter.length + loanTypeFilter.length + professionFilter.length;
   function clearAllFilters() {
     setStatusFilter([]);
     setHandlerFilter([]);
     setBankFilter([]);
     setProductFilter([]);
     setLoanTypeFilter([]);
+    setProfessionFilter([]);
   }
 
   // Inline edit handler — fires per cell change. Optimistic; rolls back on failure.
@@ -136,6 +148,7 @@ export default function CasesPage() {
         <MultiSelectFilter label="Bank" options={facets.bankNames} selected={bankFilter} onChange={setBankFilter} />
         <MultiSelectFilter label="Product" options={facets.products} selected={productFilter} onChange={setProductFilter} />
         <MultiSelectFilter label="Loan Type" options={facets.loanTypes} selected={loanTypeFilter} onChange={setLoanTypeFilter} />
+        <MultiSelectFilter label="Type" options={facets.professions} selected={professionFilter} onChange={setProfessionFilter} />
         {activeFilterCount > 0 && (
           <button onClick={clearAllFilters} className="text-xs font-bold text-red-600 hover:underline">
             Clear ({activeFilterCount})
