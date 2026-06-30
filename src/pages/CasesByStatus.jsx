@@ -145,7 +145,7 @@ export default function CasesByStatusPage() {
   useCasesRefresh(load, !editOpen);
 
   const heading = group ? group.label : (statusLabels[status] || status);
-  const showPostDisb = status === 'disbursed' || showPostDisb;
+  const showPostDisb = status === 'disbursed';
   const sc = STATUS_COLORS[status] || { bg: '#e5e7eb', fg: '#374151', rowBg: '#f3f4f6' };
 
   // Derive unique banks and handlers for filters
