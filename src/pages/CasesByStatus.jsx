@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
-import { useParams, useSearchParams, Link } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { casesService } from '../services/cases.service.js';
 import { useCasesRefresh } from '../utils/casesSync.js';
 import { formatINR, formatDate, toDateInput } from '../utils/format.js';
@@ -22,30 +22,68 @@ const statusLabels = {
   'Not interested': 'Not interested',
 };
 
-// Named status groups: a single :status value that expands to several statuses.
-// `statuses: null` means no status constraint (match all cases).
-const STATUS_GROUPS = {
-  active: { label: 'New Inquiry', statuses: ACTIVE_PIPELINE_STATUSES },
-  invoices: { label: 'Invoices', statuses: null },
-};
+// A "group" is one page that combines several statuses/filters from the old
+// sidebar folder. `baseStatus` is the default status set (null = all cases).
+// `dimensions` become in-page filter button-rows; a dimension with key 'status'
+// overrides baseStatus when a specific option is picked.
+const ALL = { label: 'All', value: '' };
+const DONE_PENDING = (key, label) => ({
+  key, label,
+  options: [ALL, { label: 'Done', value: 'Done' }, { label: 'Pending', value: 'Pending' }],
+});
 
-// Query-string sub-filters carried by sidebar folder links, with display labels.
-const SUBFILTER_KEYS = [
-  'disbursementType', 'handoverConfirmation', 'bankerConfirmation',
-  'invoiceStatus', 'paymentStatus', 'gstStatus',
-];
-const SUBFILTER_LABELS = {
-  disbursementType: (v) => `${v} Disbursed`,
-  handoverConfirmation: (v) => `Handover ${v}`,
-  bankerConfirmation: (v) => `Banker Confirmation ${v}`,
-  invoiceStatus: (v) => `Invoices ${v}`,
-  paymentStatus: (v) => (v === 'done' ? 'Payment Done' : 'Payment Pending'),
-  gstStatus: (v) => (v === 'Received' ? 'GST Done' : 'GST Pending'),
+const GROUPS = {
+  active: { label: 'New Inquiry', baseStatus: ACTIVE_PIPELINE_STATUSES, dimensions: [] },
+  login: {
+    label: 'Login',
+    baseStatus: ['Under Login Query', 'Login done - under process', 'Sanctioned'],
+    dimensions: [
+      { key: 'status', label: 'Stage', options: [
+        ALL,
+        { label: 'Under Login Query', value: 'Under Login Query' },
+        { label: 'Login done', value: 'Login done - under process' },
+        { label: 'Sanctioned', value: 'Sanctioned' },
+      ] },
+    ],
+  },
+  disbursed: {
+    label: 'Disbursed',
+    baseStatus: ['Disbursed'],
+    dimensions: [
+      { key: 'disbursementType', label: 'Type', options: [
+        ALL, { label: 'Full', value: 'Full' }, { label: 'Part', value: 'Part' },
+      ] },
+      DONE_PENDING('handoverConfirmation', 'Handover'),
+      DONE_PENDING('bankerConfirmation', 'Banker'),
+      DONE_PENDING('invoiceStatus', 'Invoice'),
+    ],
+  },
+  invoices: {
+    label: 'Invoices',
+    baseStatus: null,
+    dimensions: [
+      { key: 'paymentStatus', label: 'Payment', options: [
+        ALL, { label: 'Done', value: 'done' }, { label: 'Pending', value: 'pending' },
+      ] },
+      { key: 'gstStatus', label: 'GST', options: [
+        ALL, { label: 'Done', value: 'Received' }, { label: 'Pending', value: 'Pending' },
+      ] },
+    ],
+  },
+  ni: {
+    label: 'NI (Closed)',
+    baseStatus: ['Rejected', 'Not interested'],
+    dimensions: [
+      { key: 'status', label: 'Type', options: [
+        ALL, { label: 'Rejected', value: 'Rejected' }, { label: 'Not interested', value: 'Not interested' },
+      ] },
+    ],
+  },
 };
 
 export default function CasesByStatusPage() {
   const { status } = useParams();
-  const [searchParams] = useSearchParams();
+  const group = GROUPS[status];
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -56,17 +94,29 @@ export default function CasesByStatusPage() {
   const [dateTo, setDateTo] = useState('');
   const [postDisbStageFilter, setPostDisbStageFilter] = useState('');
   const [editOpen, setEditOpen] = useState(null);
+  // Selected value per group filter dimension, e.g. { disbursementType: 'Full' }.
+  const [dimValues, setDimValues] = useState({});
 
+  // Reset the in-page filters when switching to a different group/status.
+  useEffect(() => { setDimValues({}); }, [status]);
 
   async function load() {
     setLoading(true);
     setError(null);
     try {
-      const group = STATUS_GROUPS[status];
       const params = { limit: 200 };
-      // A group with `statuses: null` (e.g. Invoices) applies no status filter.
       if (group) {
-        if (group.statuses) params.status = group.statuses.join(',');
+        // A 'status' dimension overrides the group's default status set.
+        if (dimValues.status) {
+          params.status = dimValues.status;
+        } else if (group.baseStatus) {
+          params.status = group.baseStatus.join(',');
+        }
+        // Apply the other selected dimensions as filters.
+        for (const dim of group.dimensions) {
+          if (dim.key === 'status') continue;
+          if (dimValues[dim.key]) params[dim.key] = dimValues[dim.key];
+        }
       } else {
         params.status = status;
       }
@@ -76,11 +126,6 @@ export default function CasesByStatusPage() {
       if (dateFrom) params.dateFrom = dateFrom;
       if (dateTo) params.dateTo = dateTo;
       if (postDisbStageFilter) params.postDisbursementStage = postDisbStageFilter;
-      // Sidebar folder sub-filters (disbursed stage / payment / GST).
-      for (const key of SUBFILTER_KEYS) {
-        const val = searchParams.get(key);
-        if (val) params[key] = val;
-      }
       const r = await casesService.list(params);
       setRows(r.items);
     } catch (e) {
@@ -93,24 +138,14 @@ export default function CasesByStatusPage() {
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [status, bankFilter, handlerFilter, dateFrom, dateTo, postDisbStageFilter, searchParams]);
+  }, [status, bankFilter, handlerFilter, dateFrom, dateTo, postDisbStageFilter, dimValues]);
 
   // Refresh when a case is changed elsewhere or the tab regains focus. Paused
   // while the edit modal is open.
   useCasesRefresh(load, !editOpen);
 
-  // Active banker-stage sub-filters from the sidebar folder link, for the heading.
-  const subFilters = useMemo(() => {
-    const out = [];
-    for (const key of SUBFILTER_KEYS) {
-      const val = searchParams.get(key);
-      if (val) out.push(SUBFILTER_LABELS[key](val));
-    }
-    return out;
-  }, [searchParams]);
-
-  const group = STATUS_GROUPS[status];
   const heading = group ? group.label : (statusLabels[status] || status);
+  const showPostDisb = status === 'disbursed' || showPostDisb;
   const sc = STATUS_COLORS[status] || { bg: '#e5e7eb', fg: '#374151', rowBg: '#f3f4f6' };
 
   // Derive unique banks and handlers for filters
@@ -139,15 +174,35 @@ export default function CasesByStatusPage() {
               {heading}
             </span>
           </h1>
-          {subFilters.map((f) => (
-            <span key={f} className="rounded-full bg-indigo-50 px-3 py-1 text-xs font-semibold text-indigo-700">
-              {f}
-            </span>
-          ))}
           <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">
             {rows.length} cases
           </span>
         </div>
+
+        {/* In-page filters for this group (the old folder sub-tabs). */}
+        {group && group.dimensions.length > 0 && (
+          <div className="mb-4 space-y-2 rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
+            {group.dimensions.map((dim) => (
+              <div key={dim.key} className="flex flex-wrap items-center gap-1.5">
+                <span className="w-20 shrink-0 text-[11px] font-semibold uppercase tracking-wide text-slate-400">{dim.label}</span>
+                {dim.options.map((opt) => {
+                  const active = (dimValues[dim.key] || '') === opt.value;
+                  return (
+                    <button
+                      key={opt.label}
+                      onClick={() => setDimValues((d) => ({ ...d, [dim.key]: opt.value }))}
+                      className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+                        active ? 'bg-brand text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Filters */}
         <div className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-slate-200 bg-white p-3 shadow-sm">
@@ -177,7 +232,7 @@ export default function CasesByStatusPage() {
               {handlers.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
             </select>
           )}
-          {status === 'Disbursed' && (
+          {showPostDisb && (
             <select
               value={postDisbStageFilter}
               onChange={(e) => setPostDisbStageFilter(e.target.value)}
@@ -218,7 +273,7 @@ export default function CasesByStatusPage() {
                 <th className="px-3 py-2 text-right font-semibold">Disbursed</th>
                 <th className="px-3 py-2 text-right font-semibold">Pending</th>
                 <th className="px-3 py-2 text-left font-semibold">Follow Date</th>
-                {status === 'Disbursed' && <th className="px-3 py-2 text-left font-semibold">Post-Disb</th>}
+                {showPostDisb && <th className="px-3 py-2 text-left font-semibold">Post-Disb</th>}
                 <th className="px-3 py-2 text-right font-semibold">Actions</th>
               </tr>
             </thead>
@@ -250,7 +305,7 @@ export default function CasesByStatusPage() {
                   <td className="px-3 py-2 text-right tabular-nums font-semibold text-emerald-700">{formatINR(c.disbursedAmount)}</td>
                   <td className="px-3 py-2 text-right tabular-nums text-red-600">{formatINR(c.pendingPaymentAmount)}</td>
                   <td className="px-3 py-2">{formatDate(c.followDate)}</td>
-                  {status === 'Disbursed' && (
+                  {showPostDisb && (
                     <td className="px-3 py-2">
                       <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700">
                         {POST_DISBURSEMENT_STAGES.find((s) => s.key === c.postDisbursementStage)?.label || '—'}
