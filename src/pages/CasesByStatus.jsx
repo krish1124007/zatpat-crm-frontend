@@ -1,10 +1,12 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { casesService } from '../services/cases.service.js';
 import { useCasesRefresh } from '../utils/casesSync.js';
-import { formatINR, formatDate, toDateInput } from '../utils/format.js';
-import { LOAN_STATUSES, STATUS_COLORS, POST_DISBURSEMENT_STAGES, ACTIVE_PIPELINE_STATUSES } from '../utils/constants.js';
+import { formatINR } from '../utils/format.js';
+import { STATUS_COLORS, POST_DISBURSEMENT_STAGES, ACTIVE_PIPELINE_STATUSES } from '../utils/constants.js';
 import AddCaseModal from '../components/cases/AddCaseModal.jsx';
+import CasesDataGrid from '../components/grid/CasesDataGrid.jsx';
+import CaseDrawer from '../components/cases/CaseDrawer.jsx';
 
 
 const statusLabels = {
@@ -94,6 +96,7 @@ export default function CasesByStatusPage() {
   const [dateTo, setDateTo] = useState('');
   const [postDisbStageFilter, setPostDisbStageFilter] = useState('');
   const [editOpen, setEditOpen] = useState(null);
+  const [selectedId, setSelectedId] = useState(null);
   // Selected value per group filter dimension, e.g. { disbursementType: 'Full' }.
   const [dimValues, setDimValues] = useState({});
 
@@ -161,9 +164,40 @@ export default function CasesByStatusPage() {
   const totalLoan = rows.reduce((a, r) => a + (r.loanAmount || 0), 0);
   const totalDisbursed = rows.reduce((a, r) => a + (r.disbursedAmount || 0), 0);
 
+  // Inline edit — fires per cell change. Debounced per row+field, optimistic,
+  // rolls back via refetch on failure. Same behaviour as the All Cases grid.
+  const editTimers = useRef(new Map());
+  function handleCellEdit(id, patch) {
+    const key = `${id}:${Object.keys(patch).join(',')}`;
+    const prev = editTimers.current.get(key);
+    if (prev) clearTimeout(prev);
+    const t = setTimeout(async () => {
+      editTimers.current.delete(key);
+      try {
+        const r = await casesService.update(id, patch);
+        setRows((rs) => rs.map((row) => (row._id === id ? r.case : row)));
+      } catch (err) {
+        load();
+        alert(err.response?.data?.error || 'Update failed — refreshed from server');
+      }
+    }, 400);
+    editTimers.current.set(key, t);
+  }
+
+  async function handleDelete(row) {
+    if (!window.confirm('Move this case to Recycle Bin?')) return;
+    try {
+      await casesService.remove(row._id);
+      setRows((rs) => rs.filter((r) => r._id !== row._id));
+    } catch (err) {
+      alert(err.response?.data?.error || 'Failed to delete case');
+    }
+  }
+
   return (
-    <div className="h-full overflow-auto p-6">
-      <div className="mx-auto max-w-7xl">
+    <div className="flex h-full flex-col">
+      <div className="shrink-0 px-6 pt-4">
+        <div className="mx-auto max-w-7xl">
         <div className="mb-4 flex items-center gap-3">
           <Link to="/cases" className="text-sm text-brand hover:underline">← All Cases</Link>
           <h1 className="text-2xl font-bold text-slate-800">
@@ -255,78 +289,35 @@ export default function CasesByStatusPage() {
 
         {error && <div className="mb-3 rounded-md bg-red-50 p-2 text-sm text-red-700">{error}</div>}
 
-        <div className="overflow-x-auto rounded-xl bg-white shadow-sm ring-1 ring-slate-200">
-          <table className="min-w-full text-xs">
-            <thead className="border-b border-slate-200 bg-slate-50">
-              <tr className="text-slate-600">
-                <th className="px-3 py-2 text-left font-semibold">Sr No</th>
-                <th className="px-3 py-2 text-left font-semibold">File No</th>
-                <th className="px-3 py-2 text-left font-semibold">Customer</th>
-                <th className="px-3 py-2 text-left font-semibold">Phone</th>
-                <th className="px-3 py-2 text-left font-semibold">Product</th>
-                <th className="px-3 py-2 text-left font-semibold">Bank</th>
-                <th className="px-3 py-2 text-left font-semibold">Handled By</th>
-                <th className="px-3 py-2 text-left font-semibold">Channel</th>
-                <th className="px-3 py-2 text-left font-semibold">Reference</th>
-                <th className="px-3 py-2 text-right font-semibold">Loan Amt</th>
-                <th className="px-3 py-2 text-right font-semibold">Sanctioned</th>
-                <th className="px-3 py-2 text-right font-semibold">Disbursed</th>
-                <th className="px-3 py-2 text-right font-semibold">Pending</th>
-                <th className="px-3 py-2 text-left font-semibold">Follow Date</th>
-                {showPostDisb && <th className="px-3 py-2 text-left font-semibold">Post-Disb</th>}
-                <th className="px-3 py-2 text-right font-semibold">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading && <tr><td colSpan={16} className="p-4 text-slate-500">Loading…</td></tr>}
-              {!loading && rows.length === 0 && <tr><td colSpan={16} className="p-4 text-slate-500">No cases.</td></tr>}
-              {rows.map((c) => (
-                <tr
-                  key={c._id}
-                  className="border-b border-slate-100 last:border-0 hover:bg-slate-50"
-                  style={{ backgroundColor: sc.rowBg }}
-                >
-                  <td className="px-3 py-2 font-mono text-slate-500">#{c.srNo}</td>
-                  <td className="px-3 py-2 font-mono">{c.fileNumber || '—'}</td>
-                  <td className="px-3 py-2 font-medium text-slate-800">
-                    <div className="flex items-center gap-1.5">
-                      {c.cibilIssue === 'Yes' && <span className="text-red-500" title="CIBIL Issue">🔴</span>}
-                      <span>{c.customerName}</span>
-                    </div>
-                  </td>
-                  <td className="px-3 py-2">{c.phone}</td>
-                  <td className="px-3 py-2">{c.product}</td>
-                  <td className="px-3 py-2">{c.bankName || '—'}</td>
-                  <td className="px-3 py-2 text-indigo-700">{c.handledBy?.name || '—'}</td>
-                  <td className="px-3 py-2">{c.channelName || '—'}</td>
-                  <td className="px-3 py-2 text-purple-700">{c.referenceName || '—'}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{formatINR(c.loanAmount)}</td>
-                  <td className="px-3 py-2 text-right tabular-nums">{formatINR(c.sanctionedAmount)}</td>
-                  <td className="px-3 py-2 text-right tabular-nums font-semibold text-emerald-700">{formatINR(c.disbursedAmount)}</td>
-                  <td className="px-3 py-2 text-right tabular-nums text-red-600">{formatINR(c.pendingPaymentAmount)}</td>
-                  <td className="px-3 py-2">{formatDate(c.followDate)}</td>
-                  {showPostDisb && (
-                    <td className="px-3 py-2">
-                      <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700">
-                        {POST_DISBURSEMENT_STAGES.find((s) => s.key === c.postDisbursementStage)?.label || '—'}
-                      </span>
-                    </td>
-                  )}
-                  <td className="px-3 py-2 text-right">
-                    <button
-                      onClick={() => setEditOpen(c._id)}
-                      className="text-indigo-600 hover:text-indigo-800"
-                      title="Edit Case"
-                    >
-                      ✏️ Edit
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
         </div>
       </div>
+
+      {/* Full data grid — same inline editing, row-click drawer, edit & delete
+          as the All Cases page. Double-click any cell to edit it in place. */}
+      <div className="min-h-0 flex-1 px-6 pb-4">
+        <CasesDataGrid
+          rows={rows}
+          loading={loading}
+          quickFilter={search}
+          onRowClick={(row) => setSelectedId(row._id)}
+          onCellEdit={handleCellEdit}
+          onEdit={(row) => setEditOpen(row._id)}
+          onDelete={handleDelete}
+        />
+      </div>
+
+      {selectedId && (
+        <CaseDrawer
+          caseId={selectedId}
+          onClose={() => setSelectedId(null)}
+          onUpdated={(updated) =>
+            setRows((rs) => rs.map((r) => (r._id === updated._id ? updated : r)))
+          }
+          onDeleted={(deletedId) => setRows((rs) => rs.filter((r) => r._id !== deletedId))}
+          onEditRequest={() => setEditOpen(selectedId)}
+        />
+      )}
+
       {editOpen && (
         <AddCaseModal
           open={!!editOpen}

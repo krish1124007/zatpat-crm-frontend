@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import SimpleTable from '../components/common/SimpleTable.jsx';
 import { invoicesService, partnersService } from '../services/finance.service.js';
 import { casesService } from '../services/cases.service.js';
-import { formatINR, formatDate, rupeesToPaisa } from '../utils/format.js';
+import { formatINR, formatDate, rupeesToPaisa, paisaToRupees, toDateInput } from '../utils/format.js';
 
 const STATUS_COLORS = {
   Pending:   'bg-amber-50 text-amber-700',
@@ -15,6 +15,7 @@ export default function InvoicesPage() {
   const [loading, setLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState('');
   const [createOpen, setCreateOpen] = useState(false);
+  const [editInv, setEditInv] = useState(null);
   const [error, setError] = useState(null);
 
   async function fetchRows() {
@@ -23,7 +24,12 @@ export default function InvoicesPage() {
       const params = {};
       if (statusFilter) params.status = statusFilter;
       const r = await invoicesService.list(params);
-      setRows(r.items);
+      // Always show newest invoices first. The backend sorts DB invoices by date,
+      // but case-derived invoices are merged in after, so sort the whole list here.
+      const sorted = [...(r.items || [])].sort(
+        (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
+      );
+      setRows(sorted);
     } catch (e) {
       setError(e.response?.data?.error || 'Failed to load invoices');
     } finally {
@@ -122,6 +128,12 @@ export default function InvoicesPage() {
             >
               PDF
             </a>
+            <button
+              onClick={() => setEditInv(r)}
+              className="rounded border border-indigo-200 px-2 py-0.5 text-xs text-indigo-700 hover:bg-indigo-50"
+            >
+              Edit
+            </button>
             {r.status === 'Pending' && (
               <button
                 onClick={() => markPaid(r)}
@@ -177,6 +189,14 @@ export default function InvoicesPage() {
 
         {createOpen && (
           <CreateInvoiceModal onClose={() => setCreateOpen(false)} onCreated={fetchRows} />
+        )}
+
+        {editInv && (
+          <EditInvoiceModal
+            invoice={editInv}
+            onClose={() => setEditInv(null)}
+            onSaved={fetchRows}
+          />
         )}
       </div>
     </div>
@@ -326,6 +346,110 @@ function CreateInvoiceModal({ onClose, onCreated }) {
             className="rounded-md bg-brand px-4 py-1.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
           >
             {submitting ? 'Creating…' : 'Create Invoice'}
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function EditInvoiceModal({ invoice, onClose, onSaved }) {
+  const [form, setForm] = useState({
+    date: toDateInput(invoice.date),
+    amount: String(paisaToRupees(invoice.amount) || ''),
+    gstRate: invoice.gstRate ?? 18,
+    status: invoice.status || 'Pending',
+    notes: invoice.notes || '',
+  });
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState(null);
+
+  function set(field) {
+    return (e) => setForm((f) => ({ ...f, [field]: e.target.value }));
+  }
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setSubmitting(true);
+    setError(null);
+    try {
+      await invoicesService.update(invoice._id, {
+        date: form.date ? new Date(form.date).toISOString() : undefined,
+        amount: rupeesToPaisa(parseFloat(form.amount) || 0),
+        gstRate: parseFloat(form.gstRate) || 0,
+        status: form.status,
+        notes: form.notes,
+      });
+      onSaved();
+      onClose();
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to update');
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <form onSubmit={handleSubmit} className="w-full max-w-lg rounded-xl bg-white p-6 shadow-2xl">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-lg font-semibold text-slate-800">
+            Edit Invoice <span className="font-mono text-sm text-slate-500">{invoice.invoiceNo}</span>
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md border border-slate-300 px-2 py-0.5 text-sm text-slate-600 hover:bg-slate-50"
+          >
+            ✕
+          </button>
+        </div>
+
+        {error && <div className="mb-3 rounded-md bg-red-50 p-2 text-sm text-red-700">{error}</div>}
+
+        <div className="grid grid-cols-2 gap-3">
+          <Input label="Date" type="date" value={form.date} onChange={set('date')} />
+          <label className="block">
+            <span className="text-xs font-medium text-slate-600">Status</span>
+            <select
+              value={form.status}
+              onChange={set('status')}
+              className="mt-0.5 w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-sm"
+            >
+              <option>Pending</option>
+              <option>Paid</option>
+              <option>Cancelled</option>
+            </select>
+          </label>
+          <Input label="Amount (₹) *" type="number" step="0.01" value={form.amount} onChange={set('amount')} required />
+          <Input label="GST Rate %" type="number" value={form.gstRate} onChange={set('gstRate')} />
+          <label className="col-span-2 block">
+            <span className="text-xs font-medium text-slate-600">Notes</span>
+            <input
+              type="text"
+              value={form.notes}
+              onChange={set('notes')}
+              className="mt-0.5 w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
+            />
+          </label>
+        </div>
+
+        <p className="mt-3 text-xs text-slate-400">GST amount and total are recalculated automatically on save.</p>
+
+        <div className="mt-5 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md border border-slate-300 px-4 py-1.5 text-sm text-slate-700 hover:bg-slate-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            disabled={submitting}
+            className="rounded-md bg-brand px-4 py-1.5 text-sm font-semibold text-white hover:bg-brand-700 disabled:opacity-60"
+          >
+            {submitting ? 'Saving…' : 'Save Changes'}
           </button>
         </div>
       </form>
