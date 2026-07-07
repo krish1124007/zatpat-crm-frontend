@@ -27,6 +27,17 @@ export const ACTIVE_PIPELINE_STATUSES = [
   'Sanctioned',
 ];
 
+// The New Inquiry page shows ONLY the early stages — the login-stage statuses
+// (Under Login Query, Login done - under process, Sanctioned) live on the Login
+// page and must not appear here once an inquiry has moved to login.
+export const NEW_INQUIRY_STATUSES = [
+  'Query',
+  'Hold',
+  'Ready Login',
+  'Bank finalized',
+  'Under Bank Workout',
+];
+
 export const PROFESSIONS = [
   'Salaried',
   'Self Employed',

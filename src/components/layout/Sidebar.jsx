@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { ACTIVE_PIPELINE_STATUSES } from '../../utils/constants.js';
+import { NEW_INQUIRY_STATUSES } from '../../utils/constants.js';
 import { dashboardService } from '../../services/dashboard.service.js';
 
 
@@ -8,7 +8,7 @@ import { dashboardService } from '../../services/dashboard.service.js';
 // filters (see CasesByStatus). `statusSum` drives the count badge where it can
 // be summed from the status breakdown.
 const CASE_NAV = [
-  { to: '/cases/status/active', label: 'New Inquiry', icon: '🆕', statusSum: ACTIVE_PIPELINE_STATUSES },
+  { to: '/cases/status/active', label: 'New Inquiry', icon: '🆕', statusSum: NEW_INQUIRY_STATUSES },
   { to: '/followups', label: 'Follow-ups', icon: '🔔' },
   { to: '/cases/status/login', label: 'Login', icon: '📁', statusSum: ['Under Login Query', 'Login done - under process', 'Sanctioned'] },
   { to: '/cases/status/disbursed', label: 'Disbursed', icon: '✅', statusSum: ['Disbursed'] },

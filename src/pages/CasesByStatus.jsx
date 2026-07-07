@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { casesService } from '../services/cases.service.js';
 import { useCasesRefresh } from '../utils/casesSync.js';
 import { formatINR } from '../utils/format.js';
-import { STATUS_COLORS, POST_DISBURSEMENT_STAGES, ACTIVE_PIPELINE_STATUSES } from '../utils/constants.js';
+import { STATUS_COLORS, POST_DISBURSEMENT_STAGES, NEW_INQUIRY_STATUSES } from '../utils/constants.js';
 import AddCaseModal from '../components/cases/AddCaseModal.jsx';
 import CasesDataGrid from '../components/grid/CasesDataGrid.jsx';
 import CaseDrawer from '../components/cases/CaseDrawer.jsx';
@@ -35,7 +35,7 @@ const DONE_PENDING = (key, label) => ({
 });
 
 const GROUPS = {
-  active: { label: 'New Inquiry', baseStatus: ACTIVE_PIPELINE_STATUSES, dimensions: [] },
+  active: { label: 'New Inquiry', baseStatus: NEW_INQUIRY_STATUSES, dimensions: [] },
   login: {
     label: 'Login',
     baseStatus: ['Under Login Query', 'Login done - under process', 'Sanctioned'],

@@ -49,6 +49,10 @@ export const casesService = {
   referencePartnersAutocomplete() {
     return api.get('/cases/reference-partners-autocomplete').then((res) => res.data);
   },
+
+  bankersAutocomplete() {
+    return api.get('/cases/bankers-autocomplete').then((res) => res.data);
+  },
   // Dropdown options
   getAllDropdownOptions() {
     return api.get('/cases/dropdowns/all').then((r) => r.data);

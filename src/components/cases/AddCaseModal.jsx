@@ -184,12 +184,14 @@ export default function AddCaseModal({ open, onClose, onCreated, defaultChannelN
   const [newLoanTypeName, setNewLoanTypeName] = useState('');
   const [dropdownLoading, setDropdownLoading] = useState(true);
   const [referencePartnersList, setReferencePartnersList] = useState([]);
+  const [bankersList, setBankersList] = useState([]);
 
   useEffect(() => {
     if (open) {
       salaryService.employees().then((r) => setEmployees(r.items));
       loadDropdownOptions();
       casesService.referencePartnersAutocomplete().then((r) => setReferencePartnersList(r.items || []));
+      casesService.bankersAutocomplete().then((r) => setBankersList(r.items || [])).catch(() => {});
     }
   }, [open]);
 
@@ -732,7 +734,35 @@ export default function AddCaseModal({ open, onClose, onCreated, defaultChannelN
         {/* Banker Details */}
         <SectionTitle>Banker/Handover Details</SectionTitle>
         <div className="grid grid-cols-3 gap-3 mb-4">
-          <Input label="Banker Name" {...nestedField('bankerDetails', 'name')} />
+          <div className="relative">
+            <Input
+              label="Banker Name"
+              value={form.bankerDetails.name}
+              list="bankers-datalist"
+              placeholder="Type or pick a saved banker"
+              onChange={(e) => {
+                const val = e.target.value;
+                const match = bankersList.find((b) => b.name === val);
+                setForm((f) => ({
+                  ...f,
+                  bankerDetails: {
+                    ...f.bankerDetails,
+                    name: val,
+                    // Auto-fill contact details when a saved banker is picked.
+                    ...(match ? {
+                      mobileNumber: match.mobileNumber || f.bankerDetails.mobileNumber,
+                      emailId: match.emailId || f.bankerDetails.emailId,
+                    } : {}),
+                  },
+                }));
+              }}
+            />
+            <datalist id="bankers-datalist">
+              {bankersList.map((b, i) => (
+                <option key={i} value={b.name}>{[b.mobileNumber, b.emailId].filter(Boolean).join(' · ')}</option>
+              ))}
+            </datalist>
+          </div>
           <Input label="Banker Mobile" {...nestedField('bankerDetails', 'mobileNumber')} />
           <Input label="Banker Email" type="email" {...nestedField('bankerDetails', 'emailId')} />
           <Select
