@@ -8,8 +8,8 @@ import { dashboardService } from '../../services/dashboard.service.js';
 // filters (see CasesByStatus). `statusSum` drives the count badge where it can
 // be summed from the status breakdown.
 const CASE_NAV = [
-  { to: '/cases/status/active', label: 'New Inquiry', icon: '🆕', statusSum: NEW_INQUIRY_STATUSES },
-  { to: '/followups', label: 'Follow-ups', icon: '🔔' },
+  { to: '/cases/status/new-inquiry', label: 'New Inquiry', icon: '🆕' },
+  { to: '/cases/status/active', label: 'Query', icon: '❓', statusSum: NEW_INQUIRY_STATUSES },
   { to: '/cases/status/login', label: 'Login', icon: '📁', statusSum: ['Under Login Query', 'Login done - under process', 'Sanctioned'] },
   { to: '/cases/status/disbursed', label: 'Disbursed', icon: '✅', statusSum: ['Disbursed'] },
   { to: '/cases/status/ni', label: 'NI', icon: '🚫', statusSum: ['Rejected', 'Not interested'] },
@@ -24,6 +24,7 @@ const TOP_NAV = [
 
 const BOTTOM_NAV = [
   { type: 'divider', label: 'Tracking' },
+  { to: '/followups', label: 'Upcoming follow up', icon: '🔔' },
   { to: '/reference-partners', label: 'Reference Partners', icon: '👥' },
   { type: 'divider', label: 'Finance' },
   { to: '/partners', label: 'Partners', icon: '🤝' },

@@ -35,7 +35,8 @@ const DONE_PENDING = (key, label) => ({
 });
 
 const GROUPS = {
-  active: { label: 'New Inquiry', baseStatus: NEW_INQUIRY_STATUSES, dimensions: [] },
+  'new-inquiry': { label: 'New Inquiry', baseStatus: ['__EMPTY__'], dimensions: [] },
+  active: { label: 'Query', baseStatus: NEW_INQUIRY_STATUSES, dimensions: [] },
   login: {
     label: 'Login',
     baseStatus: ['Under Login Query', 'Login done - under process', 'Sanctioned'],
