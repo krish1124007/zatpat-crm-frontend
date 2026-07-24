@@ -134,6 +134,23 @@ export default function CasesDataGrid({ rows, loading, onRowClick, onCellEdit, o
       selectCol('product', 'Product', PRODUCTS, { width: 110 }),
       selectCol('propertyType', 'Property Type', ['', ...PROPERTY_TYPES], { width: 140 }),
       {
+        field: 'queryNotes',
+        headerName: 'Query',
+        editable: true,
+        width: 200,
+        cellEditor: 'agLargeTextCellEditor',
+        cellEditorPopup: true,
+        cellEditorParams: { maxLength: 2000, rows: 6, cols: 50 },
+        cellClass: 'text-xs whitespace-normal leading-tight text-slate-700',
+        tooltipValueGetter: (p) => p.value || '',
+        cellRenderer: (p) =>
+          p.value ? (
+            <span className="text-slate-700">{p.value}</span>
+          ) : (
+            <span className="text-slate-300">+ note / pendency</span>
+          ),
+      },
+      {
         field: 'currentStatus',
         headerName: 'Status',
         editable: true,

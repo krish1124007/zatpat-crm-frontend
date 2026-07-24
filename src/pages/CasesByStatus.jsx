@@ -35,7 +35,7 @@ const DONE_PENDING = (key, label) => ({
 });
 
 const GROUPS = {
-  'new-inquiry': { label: 'New Inquiry', baseStatus: ['__EMPTY__'], dimensions: [] },
+  'new-inquiry': { label: 'New Inquiry', baseStatus: ['Query'], dimensions: [] },
   active: { label: 'Query', baseStatus: NEW_INQUIRY_STATUSES, dimensions: [] },
   login: {
     label: 'Login',
@@ -97,6 +97,7 @@ export default function CasesByStatusPage() {
   const [dateTo, setDateTo] = useState('');
   const [postDisbStageFilter, setPostDisbStageFilter] = useState('');
   const [editOpen, setEditOpen] = useState(null);
+  const [addOpen, setAddOpen] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
   // Selected value per group filter dimension, e.g. { disbursementType: 'Full' }.
   const [dimValues, setDimValues] = useState({});
@@ -146,7 +147,7 @@ export default function CasesByStatusPage() {
 
   // Refresh when a case is changed elsewhere or the tab regains focus. Paused
   // while the edit modal is open.
-  useCasesRefresh(load, !editOpen);
+  useCasesRefresh(load, !editOpen && !addOpen);
 
   const heading = group ? group.label : (statusLabels[status] || status);
   const showPostDisb = status === 'disbursed';
@@ -212,6 +213,12 @@ export default function CasesByStatusPage() {
           <span className="rounded-full bg-slate-100 px-3 py-1 text-sm font-semibold text-slate-700">
             {rows.length} cases
           </span>
+          <button
+            onClick={() => setAddOpen(true)}
+            className="ml-auto rounded-md bg-brand px-3 py-1.5 text-sm font-semibold text-white hover:bg-brand-700"
+          >
+            + Add Case
+          </button>
         </div>
 
         {/* In-page filters for this group (the old folder sub-tabs). */}
@@ -330,6 +337,22 @@ export default function CasesByStatusPage() {
           defaultChannelName="Zatpat"
         />
       )}
+
+      <AddCaseModal
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        onCreated={(newCase) => {
+          // Show the new case immediately if it belongs in this view; otherwise
+          // refetch so filters/counts stay correct.
+          const belongs =
+            !group ||
+            !group.baseStatus ||
+            group.baseStatus.includes(newCase.currentStatus);
+          if (belongs) setRows((rs) => [newCase, ...rs]);
+          else load();
+        }}
+        defaultChannelName="Zatpat"
+      />
     </div>
   );
 }

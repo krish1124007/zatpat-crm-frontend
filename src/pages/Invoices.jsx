@@ -330,6 +330,8 @@ function CreateInvoiceModal({ onClose, onCreated }) {
               className="mt-0.5 w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
             />
           </label>
+
+          <GstPreview amount={form.amount} gstRate={form.gstRate} />
         </div>
 
         <div className="mt-5 flex justify-end gap-2">
@@ -432,9 +434,9 @@ function EditInvoiceModal({ invoice, onClose, onSaved }) {
               className="mt-0.5 w-full rounded-md border border-slate-300 px-2 py-1.5 text-sm"
             />
           </label>
-        </div>
 
-        <p className="mt-3 text-xs text-slate-400">GST amount and total are recalculated automatically on save.</p>
+          <GstPreview amount={form.amount} gstRate={form.gstRate} />
+        </div>
 
         <div className="mt-5 flex justify-end gap-2">
           <button
@@ -453,6 +455,33 @@ function EditInvoiceModal({ invoice, onClose, onSaved }) {
           </button>
         </div>
       </form>
+    </div>
+  );
+}
+
+// Live GST + total preview. Mirrors the backend calc (gstAmount = amount × rate,
+// total = amount + gst) so the 18% GST is auto-counted as the user types.
+function GstPreview({ amount, gstRate }) {
+  const base = parseFloat(amount) || 0;
+  const rate = parseFloat(gstRate) || 0;
+  const gst = (base * rate) / 100;
+  const total = base + gst;
+  const fmt = (n) =>
+    n.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return (
+    <div className="col-span-2 mt-1 rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm">
+      <div className="flex items-center justify-between text-slate-600">
+        <span>Base amount</span>
+        <span className="tabular-nums">₹{fmt(base)}</span>
+      </div>
+      <div className="flex items-center justify-between text-slate-600">
+        <span>GST @ {rate}%</span>
+        <span className="tabular-nums">₹{fmt(gst)}</span>
+      </div>
+      <div className="mt-1 flex items-center justify-between border-t border-slate-200 pt-1 font-semibold text-slate-800">
+        <span>Total (incl. GST)</span>
+        <span className="tabular-nums">₹{fmt(total)}</span>
+      </div>
     </div>
   );
 }
